@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280">
+<title>DCDC 模块功率曲线匹配工具 v2 · 模块矩阵组合模拟</title>
+<style>
+  :root{
+    --navy:#0F2A5F; --blue:#2E6BE6; --blue2:#1D4ED8; --blue3:#3B82F6;
+    --sky:#EAF1FE; --mist:#E2E8F0; --bg:#F4F7FB; --ink:#0F172A; --ink2:#475569; --ink3:#64748B;
+    --chip:#F1F5F9;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .top{background:linear-gradient(180deg,#0F2A5F 0%,#1D4ED8 100%);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between}
+  .top h1{margin:0;font-size:16px;font-weight:700;letter-spacing:.5px}
+  .top .sub{font-size:12px;opacity:.85}
+  .badge{display:inline-block;border:1px solid #fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:8px;opacity:.92}
+  .container{max-width:1420px;margin:0 auto;padding:14px;display:grid;grid-template-columns:396px 1fr;gap:14px}
+  .card{background:#fff;border:1px solid var(--mist);border-radius:8px}
+  .card h2{margin:0;padding:10px 14px;background:var(--navy);color:#fff;font-size:13px;font-weight:600;letter-spacing:.4px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .card h2 .tag{font-size:11px;background:rgba(255,255,255,.15);padding:1px 8px;border-radius:8px;white-space:nowrap}
+  .card .body{padding:12px 14px}
+  .note{padding:10px 14px;background:var(--sky);border:1px solid #BFD3F4;color:var(--navy);font-size:12px;border-radius:6px;margin-bottom:12px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0}
+  .row label{font-size:12px;color:var(--ink2);min-width:80px}
+  .row .val{font-variant-numeric:tabular-nums;font-weight:600;color:var(--navy);min-width:80px;text-align:right}
+  input[type="range"]{width:100%;accent-color:var(--blue2)}
+  .seg{display:inline-flex;background:#EAF1FE;border-radius:6px;padding:2px;gap:0;flex-wrap:wrap}
+  .seg button{background:transparent;border:0;color:var(--ink2);padding:4px 12px;border-radius:4px;font-size:12px;cursor:pointer;font-weight:500}
+  .seg button.on{background:var(--navy);color:#fff}
+  .segrow{display:flex;gap:4px;flex-wrap:wrap}
+  .segrow button{background:#fff;border:1px solid var(--mist);color:var(--ink2);padding:2px 8px;border-radius:12px;font-size:11px;cursor:pointer}
+  .segrow button.on{background:var(--blue2);color:#fff;border-color:var(--blue2)}
+  .segrow button:hover{border-color:var(--blue2)}
+  .field{display:flex;align-items:center;gap:6px;margin:6px 0}
+  .field label{font-size:12px;color:var(--ink2);min-width:88px;white-space:nowrap}
+  .field input[type="number"]{width:76px;padding:4px 6px;border:1px solid var(--mist);border-radius:4px;font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+  .field .unit{font-size:11px;color:var(--ink3)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
+  table.pts,table.mat{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  table.pts th,table.pts td,table.mat th,table.mat td{padding:3px 4px;border-bottom:1px solid var(--mist);text-align:center}
+  table.pts th,table.mat th{color:var(--ink3);font-weight:500;background:#F8FAFC;white-space:nowrap}
+  table.mat td input[type="text"],table.mat td input[type="number"]{width:100%;padding:3px 4px;border:1px solid var(--mist);border-radius:3px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;font-family:inherit}
+  table.mat td input[type="text"]{text-align:left}
+  table.mat td select{padding:2px;border:1px solid var(--mist);border-radius:3px;font-size:11px}
+  table.mat .ck{width:16px;height:16px;accent-color:var(--blue2);vertical-align:middle}
+  .del{background:transparent;border:0;color:var(--ink3);cursor:pointer;font-size:13px}
+  .del:hover{color:var(--navy)}
+  .addrow{display:inline-block;margin-top:6px;font-size:11px;color:var(--blue2);cursor:pointer;border:1px dashed var(--mist);padding:3px 10px;border-radius:4px}
+  .addrow:hover{border-color:var(--blue2);background:#F8FAFC}
+  .canvas-wrap{position:relative}
+  canvas{display:block;width:100%;height:500px;background:#fff;border-radius:6px}
+  .legend{position:absolute;top:8px;right:10px;background:rgba(255,255,255,.95);border:1px solid var(--mist);border-radius:6px;padding:6px 9px;font-size:11px;color:var(--ink2);max-width:240px}
+  .legend .item{display:flex;align-items:center;gap:6px;margin:2px 0}
+  .legend .sw{width:20px;height:2px;border-radius:1px;flex:none}
+  .legend .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:none}
+  .legend .dash1{border-top:1px dashed #94A3B8}
+  .legend .dash2{border-top:1px dashed var(--blue2)}
+  .chips{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:12px 14px}
+  .chip{background:#F8FAFC;border:1px solid var(--mist);border-radius:6px;padding:7px 9px}
+  .chip .k{font-size:11px;color:var(--ink3);white-space:nowrap}
+  .chip .v{font-size:15px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;margin-top:2px;white-space:nowrap}
+  .chip .u{font-size:10px;color:var(--ink3);margin-left:3px;font-weight:400}
+  .cmdline{display:flex;align-items:center;gap:8px;padding:10px 14px 0;font-size:12px;color:var(--ink2);flex-wrap:wrap}
+  .cmdline input[type="number"]{width:86px;padding:4px 6px;border:1px solid var(--mist);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--navy)}
+  .cmdline b{color:var(--navy);font-variant-numeric:tabular-nums}
+  .status{margin:10px 14px 14px;padding:8px 12px;border-radius:6px;font-size:12px;border:1px solid var(--mist);background:#F8FAFC;color:var(--ink)}
+  .status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--blue2);margin-right:6px;vertical-align:1px}
+  .status.good{background:#EAF1FE;border-color:#BFD3F4;color:#0F2A5F}
+  .status.warn{background:#FFF7E6;border-color:#FFD591;color:#7A4A00}
+  .status.bad{background:#FFF1F0;border-color:#FFA39E;color:#820014}
+  .footer{padding:8px 14px;border-top:1px solid var(--mist);background:#F8FAFC;font-size:11px;color:var(--ink3);border-radius:0 0 8px 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .btn{background:var(--blue2);color:#fff;border:0;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer}
+  .btn:hover{background:#1E40AF}
+  .btn.ghost{background:transparent;color:var(--blue2);border:1px solid var(--blue2)}
+  .mini{font-size:11px;color:var(--ink3);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>DCDC 模块功率曲线匹配工具 <span class="badge">v2.0 · 模块矩阵组合模拟</span></h1>
+    <div class="sub">单台标定 ⇄ 整机组合（模块矩阵）｜ 输入电压 / 输出电压 / 负载电阻 → P-U 包络与工作点实时匹配</div>
+  </div>
+  <div class="sub">30 kW 风冷 DCDC 功率模块 · 参数均可编辑</div>
+</div>
+
+<div class="container">
+  <!-- ============ 左侧参数 ============ -->
+  <div>
+    <div class="note">
+      ⚠ <b>模型说明</b>：单台输出能力 = min(输入电压降额功率, U<sub>out</sub>×I<sub>lim</sub>)；预置<b>低压模式</b>(I<sub>lim</sub>=100A / U 150~500V) 与 <b>高压模式</b>(I<sub>lim</sub>=60A / U 200~1000V)，输入降额折点示例 (250V,15kW)(400V,30kW)(950V,30kW)。<b>全部参数可编辑</b>，正式采用前请按所选模块实测/澄清数据校准。
+    </div>
+
+    <div class="card">
+      <h2>运行工况 <span class="tag">实时</span></h2>
+      <div class="body">
+        <div class="row">
+          <label>输入电压 U<sub>in</sub></label>
+          <span class="val" id="vUin">800 V</span>
+        </div>
+        <input type="range" id="Uin" min="240" max="960" step="1" value="800">
+        <div class="segrow" id="uInBookmarks" style="margin-top:6px">
+          <button data-v="250">250</button><button data-v="400">400</button><button data-v="500">500</button>
+          <button data-v="600">600</button><button data-v="800" class="on">800 典型</button><button data-v="950">950</button>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <label>输出电压 U<sub>out</sub></label>
+          <span class="val" id="vUout">300 V</span>
+        </div>
+        <input type="range" id="Uout" min="0" max="500" step="1" value="300">
+        <div class="mini" id="uoutRangeInfo">低压模式：调节范围 150~500 V（U&lt;150 模块不可输出）</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <h2>单台模块参数 <span class="tag">全模式共用</span></h2>
+      <div class="body">
+        <div class="seg" id="modeSwitch" style="display:flex">
+          <button class="on" data-mode="low">低压 (0~100A)</button>
+          <button data-mode="high">高压 (0~60A)</button>
+        </div>
+        <div class="grid2" style="margin-top:8px">
+          <div class="field"><label>I<sub>lim</sub></label><input type="number" id="Ilim" min="10" max="120" step="1" value="100"><span class="unit">A</span></div>
+          <div class="field"><label>U<sub>out,min</sub></label><input type="number" id="Umin" min="0" max="500" step="1" value="150"><span class="unit">V</span></div>
+          <div class="field"><label>U<sub>out,max</sub></label><input type="number" id="Umax" min="100" max="1000" step="1" value="500"><span class="unit">V</span></div>
+          <div class="field"><label>效率 η</label><input type="number" id="eff" min="80" max="99" step="0.1" value="95"><span class="unit">%</span></div>
+        </div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn ghost" id="reset">恢复示例预设</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <h2>输入电压限功率折点 <span class="tag">全模式共用</span></h2>
+      <div class="body">
+        <table class="pts" id="ptTbl"><thead><tr><th>U<sub>in</sub> (V)</th><th>P<sub>avail</sub> (kW)</th><th></th></tr></thead><tbody></tbody></table>
+        <span class="addrow" id="addPt">+ 添加折点</span>
+        <div class="mini">折点间线性插值；U&lt;最小折点 → P=0；U&gt;最大折点 → 钳位上限。</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <h2>模块矩阵（组合模拟） <span class="tag">整机多模块</span></h2>
+      <div class="body">
+        <div class="mini" style="margin-bottom:6px">行 = 一组同构模块；<b>R</b> 为组内<b>每台</b>所带负载电阻（组曲线按 n 台×U²/R 求和）；<b>类型</b>仅用于液冷/风冷统计。</div>
+        <table class="mat" id="matTbl">
+          <thead><tr><th>组名</th><th>台数</th><th>R/台(Ω)</th><th>类型</th><th>启用</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <span class="addrow" id="addRow">+ 添加负载组</span>
+        <div class="mini" style="margin-top:6px">预置 = 0905 柜体布置 V1：液冷 11 台（每台 30kW 液冷块，R=5.33Ω）＋风冷 2 台（每台 24kW@400V，R=6.67Ω → 48kW）＋备用 1 台（默认停用）。请按整机各支路实际电阻改。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 右侧图表 ============ -->
+  <div>
+    <div class="card">
+      <h2><span>P-U 包络 · 工作点</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="seg" id="scopeSwitch" style="display:flex">
+            <button data-scope="single">单台模拟</button>
+            <button data-scope="multi" class="on">整机组合</button>
+          </span>
+          <span class="tag" id="tagMode">低压模式</span>
+        </span>
+      </h2>
+      <div class="body canvas-wrap">
+        <canvas id="cv"></canvas>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <h2><span>数值结算</span><span class="tag" id="scopeTag">整机组合</span></h2>
+      <div class="cmdline" id="cmdline">
+        <label style="font-size:12px;color:var(--ink2)">恒功率命令 P<sub>cmd</sub></label>
+        <input type="number" id="Pcmd" min="1" max="400" step="1" value="320">
+        <span style="color:var(--ink3)">kW → 建议 U<sub>set</sub> =</span><b id="usetRes">—</b>
+        <span class="segrow" style="display:inline-flex">
+          <button data-p="160">160</button><button data-p="240">240</button><button data-p="320" class="on">320</button><button data-p="368">368</button><button data-p="390">390满</button>
+        </span>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="status" id="status"><span class="dot"></span>就绪</div>
+      <div class="footer">
+        <span id="footNote">坐标系：x = U<sub>out</sub> · y = P<sub>out</sub>（组合模式为整机 ΣP）</span>
+        <button class="btn" id="export">导出当前曲线 CSV</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'), ctx=cv.getContext('2d');
+
+const COL={navy:'#0F2A5F',blue:'#2E6BE6',blue2:'#1D4ED8',blue3:'#3B82F6',line:'#94A3B8',ink2:'#475569',ink3:'#64748B',mist:'#E2E8F0'};
+const GRP_COL=['#1D4ED8','#2E6BE6','#3B82F6','#60A5FA','#2563EB','#93C5FD'];
+
+const state={
+  Uin:800, Uout:300, Ilim:100, Umin:150, Umax:500, eff:0.95,
+  mode:'low', scope:'multi', ratedP:30,
+  points:[{v:250,p:15},{v:400,p:30},{v:950,p:30}],
+  matrix:[
+    {name:'液冷池A', n:3, R:5.33, type:'液冷', on:true},
+    {name:'液冷池B', n:3, R:5.33, type:'液冷', on:true},
+    {name:'液冷池C', n:3, R:5.33, type:'液冷', on:true},
+    {name:'液冷池D', n:2, R:5.33, type:'液冷', on:true},
+    {name:'风冷组G', n:2, R:6.67, type:'风冷', on:true},
+    {name:'备用S1',  n:1, R:5.33, type:'备用', on:false}
+  ]
+};
+
+/* ---------- 核心模型 ---------- */
+function derateAt(uin){
+  const pts=[...state.points].sort((a,b)=>a.v-b.v);
+  if(uin<pts[0].v) return 0;
+  if(uin>=pts[pts.length-1].v) return pts[pts.length-1].p;
+  for(let i=0;i<pts.length-1;i++){
+    if(uin>=pts[i].v && uin<=pts[i+1].v){
+      const t=(uin-pts[i].v)/(pts[i+1].v-pts[i].v);
+      return pts[i].p + t*(pts[i+1].p-pts[i].p);
+    }
+  }
+  return 0;
+}
+// 单台在给定 Uout / Uin 的可用功率上限(kW)
+function capSingle(u, uin){
+  const Pavail=derateAt(uin);
+  const Pcl=u*state.Ilim/1000;
+  return {cap:Math.min(Pavail,Pcl), Pavail, valid:u>=state.Umin&&u<=state.Umax};
+}
+function onRows(){ return state.matrix.filter(r=>r.on && r.n>0 && r.R>0); }
+// 组：每台负载 = U²/R；组需求=n×；组能力=n×cap；实际=min
+function groupFinal(r,u,uin){
+  const c=capSingle(u,uin);
+  if(!c.valid) return 0;
+  const per=(u*u/r.R)/1000;
+  return Math.min(r.n*per, r.n*c.cap);
+}
+function totalFinal(u,uin){
+  const rows=onRows();
+  let need=0,able=0,fin=0;
+  rows.forEach(r=>{
+    const c=capSingle(u,uin);
+    if(!c.valid) return;
+    const per=(u*u/r.R)/1000;
+    const nd=r.n*per, ab=r.n*c.cap;
+    need+=nd; able+=ab; fin+=Math.min(nd,ab);
+  });
+  return {need,able,final:fin,n:rows.reduce((s,r)=>s+r.n,0),ngroups:rows.length};
+}
+
+/* ---------- 绘图 ---------- */
+function niceY(){ return Math.max(40, Math.ceil(onRows().reduce((s,r)=>s+r.n,0)*state.ratedP*1.15/50)*50); }
+
+function draw(){
+  const dpr=window.devicePixelRatio||1;
+  const w=cv.clientWidth,h=cv.clientHeight;
+  cv.width=w*dpr; cv.height=h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  const single=(state.scope==='single');
+  const xMax=Math.max(state.Umax, state.mode==='low'?500:1000);
+  const yMax=single?Math.max(35,state.ratedP*1.15):niceY();
+  const yStep=single?5:50;
+  const padL=50,padR=16,padT=18,padB=30;
+  const W=w-padL-padR,H=h-padT-padB;
+  const X=v=>padL+(v/xMax)*W;
+  const Y=v=>padT+H-(v/yMax)*H;
+
+  ctx.fillStyle='#fff'; ctx.fillRect(padL,padT,W,H);
+
+  // 网格
+  ctx.strokeStyle=COL.mist; ctx.lineWidth=1;
+  ctx.fillStyle=COL.ink3; ctx.font='11px -apple-system,"PingFang SC",sans-serif'; ctx.textAlign='center';
+  const xstep=xMax>600?100:50;
+  for(let v=0;v<=xMax;v+=xstep){const x=X(v);ctx.beginPath();ctx.moveTo(x,padT);ctx.lineTo(x,padT+H);ctx.stroke();ctx.fillText(v,x,padT+H+14);}
+  ctx.textAlign='right';
+  for(let p=0;p<=yMax;p+=yStep){const y=Y(p);ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+W,y);ctx.stroke();ctx.fillText(p,padL-6,y+3);}
+  ctx.strokeStyle=COL.ink2;ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(padL,padT);ctx.lineTo(padL,padT+H);ctx.lineTo(padL+W,padT+H);ctx.stroke();
+  ctx.fillStyle=COL.ink2;ctx.font='12px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='center';
+  ctx.fillText('输出电压 U_out (V)',padL+W/2,h-4);
+  ctx.save();ctx.translate(14,padT+H/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';
+  ctx.fillText(single?'输出功率 P_out (kW)':'整机吸收功率 ΣP_out (kW)',0,0);ctx.restore();
+
+  // 禁区
+  ctx.fillStyle='rgba(15,42,95,.05)';
+  ctx.fillRect(padL,padT,Math.max(0,X(Math.min(state.Umin,xMax))-padL),H);
+  if(state.Umax<xMax) ctx.fillRect(X(state.Umax),padT,padL+W-X(state.Umax),H);
+  ctx.fillStyle=COL.ink3;ctx.font='10px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='center';
+  if(state.Umin>0&&state.Umin<xMax) ctx.fillText('禁区 U<'+state.Umin+'V',(padL+X(state.Umin))/2,padT+H/2);
+  if(state.Umax<xMax) ctx.fillText('禁区 U>'+state.Umax+'V',(X(state.Umax)+padL+W)/2,padT+H/2);
+
+  if(single) drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep);
+  else       drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep);
+}
+
+function drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep){
+  const u=state.Uout, uin=state.Uin;
+  const lg=$('legend');
+  lg.innerHTML=
+    '<div class="item"><span class="sw" style="background:#0F2A5F"></span>当前 U_in 包络</div>'+
+    '<div class="item"><span class="sw dash1"></span>其他 U_in 参考</div>'+
+    '<div class="item"><span class="sw" style="border-top:1px dashed #3B82F6"></span>负载线 U²/R (R=5.33)</div>'+
+    '<div class="item"><span class="dot"></span>工作点</div>'+
+    '<div class="item"><span class="sw" style="background:#94A3B8"></span>30 kW 满载参考</div>';
+
+  ctx.strokeStyle=COL.line;ctx.lineWidth=1;ctx.setLineDash([3,4]);
+  ctx.beginPath();ctx.moveTo(padL,Y(30));ctx.lineTo(padL+W,Y(30));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=COL.line;ctx.font='11px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='left';
+  ctx.fillText('30 kW 满载',padL+6,Y(30)-3);
+
+  function env(uin,color,lw,dash){
+    ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash||[]);
+    ctx.beginPath();let st=false;
+    for(let v=0;v<=xMax;v+=2){
+      const e=capSingle(v,uin);
+      if(!e.valid){st=false;continue;}
+      const x=X(v),y=Y(Math.min(e.cap,yMax));
+      if(!st){ctx.moveTo(x,y);st=true;}else ctx.lineTo(x,y);
+    }
+    ctx.stroke();ctx.setLineDash([]);
+  }
+  [250,400,800,950].forEach(vi=>{if(vi!==uin) env(vi,COL.line,1,[4,4]);});
+  env(uin,COL.navy,2.6,null);
+
+  const R_single=5.33;
+  ctx.strokeStyle=COL.blue3;ctx.lineWidth=1.4;ctx.setLineDash([2,5]);
+  ctx.beginPath();let st=false;
+  for(let v=0;v<=xMax;v+=2){const p=v*v/R_single/1000;if(p>yMax*1.1)break;const x=X(v),y=Y(Math.min(p,yMax));if(!st){ctx.moveTo(x,y);st=true;}else ctx.lineTo(x,y);}
+  ctx.stroke();ctx.setLineDash([]);
+
+  const e=capSingle(u,uin);
+  let Pfinal=0,cls='bad',note='';
+  if(!e.valid){
+    note='输出电压 '+u+'V 在模式禁区 (<'+state.Umin+' 或 >'+state.Umax+')';
+  } else {
+    const need=u*u/R_single/1000;
+    Pfinal=Math.min(need,e.cap);
+    if(need>e.cap+0.05){cls='warn';note='请求 '+need.toFixed(2)+'kW 超单台包络 '+e.cap.toFixed(2)+'kW → 受限（降 U 或增大 R）';}
+    else{cls='good';note=u*state.Ilim/1000<e.Pavail-0.1?'限流区（恒流）':'恒功率区';}
+  }
+  const Iout=u>0?Pfinal*1000/u:0, Pin=Pfinal/state.eff, Ploss=Pin-Pfinal;
+
+  ctx.strokeStyle=COL.blue;ctx.lineWidth=1;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(X(u),padT);ctx.lineTo(X(u),padT+H);ctx.stroke();ctx.setLineDash([]);
+  if(Pfinal>0.01){
+    ctx.fillStyle=COL.blue;ctx.beginPath();ctx.arc(X(u),Y(Math.min(Pfinal,yMax)),6,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  }
+  ctx.fillStyle=COL.navy;ctx.font='11px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='left';
+  ctx.fillText('('+u+'V, '+Pfinal.toFixed(2)+'kW)',X(u)+9,Y(Math.min(Pfinal,yMax))-7);
+
+  const chips=[
+    ['U_in',uin+'','V'],['P_avail(单台)',e.Pavail.toFixed(2),'kW'],
+    ['U_out',u+'','V'],['I_lim',state.Ilim+'','A'],
+    ['负载请求',(u*u/R_single/1000).toFixed(2),'kW'],['实际输出',Pfinal.toFixed(2),'kW'],
+    ['I_out',Iout.toFixed(1),'A'],['η',(state.eff*100).toFixed(1),'%'],
+    ['P_in',Pin.toFixed(2),'kW'],['热耗',Ploss.toFixed(2),'kW'],
+    ['示例负载R',R_single.toFixed(2),'Ω'],['包络占位',e.Pavail>0?Math.round(Pfinal/e.Pavail*100)+'':'0','%']
+  ];
+  fillChips(chips);
+  setStatus(cls,'单台模拟 · '+note);
+}
+
+function drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep){
+  const u=state.Uout, uin=state.Uin;
+  const rows=onRows();
+  const nTot=rows.reduce((s,r)=>s+r.n,0);
+  const lg=$('legend');
+  lg.innerHTML=
+    '<div class="item"><span class="sw" style="background:#0F2A5F"></span>整机能力包络 Σ(n·cap)</div>'+
+    '<div class="item"><span class="sw dash2"></span>整机负载需求 Σ(n·U²/R)</div>'+
+    '<div class="item"><span class="sw" style="background:#94A3B8"></span>整机满载参考 '+(nTot*state.ratedP)+'kW</div>'+
+    '<div class="item"><span class="dot"></span>工作点 / P_cmd 对应点</div>';
+
+  ctx.strokeStyle=COL.line;ctx.lineWidth=1;ctx.setLineDash([3,4]);
+  ctx.beginPath();ctx.moveTo(padL,Y(nTot*state.ratedP));ctx.lineTo(padL+W,Y(nTot*state.ratedP));ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=COL.line;ctx.font='11px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='left';
+  ctx.fillText('整机满载 '+nTot*state.ratedP+' kW',padL+6,Y(nTot*state.ratedP)-3);
+
+  function pathFor(fn,color,lw,dash){
+    ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash||[]);
+    ctx.beginPath();let st=false;
+    for(let v=0;v<=xMax;v+=2){
+      const p=fn(v);
+      if(p<=0){st=false;continue;}
+      const x=X(v),y=Y(Math.min(p,yMax));
+      if(!st){ctx.moveTo(x,y);st=true;}else ctx.lineTo(x,y);
+    }
+    ctx.stroke();ctx.setLineDash([]);
+  }
+  // 各组能力包络（细蓝阶区分）
+  rows.forEach((r,idx)=>{
+    pathFor(v=>{const c=capSingle(v,uin);return c.valid?r.n*c.cap:0;}, GRP_COL[idx%GRP_COL.length], 1.1, [2,3]);
+  });
+  // 整机能力包络
+  pathFor(v=>{
+    let s=0;rows.forEach(r=>{const c=capSingle(v,uin);if(c.valid)s+=r.n*c.cap;});
+    return s;
+  }, COL.navy, 2.6, null);
+  // 整机负载需求
+  pathFor(v=>{
+    let s=0;rows.forEach(r=>{if(capSingle(v,uin).valid)s+=r.n*v*v/r.R/1000;});
+    return s;
+  }, COL.blue2, 2.0, [8,5]);
+
+  const tot=totalFinal(u,uin);
+  let cls='good',note='';
+  if(tot.need>tot.able+0.05){
+    cls='warn';
+    note='负载需求 '+tot.need.toFixed(1)+'kW 超整机能力 '+tot.able.toFixed(1)+'kW → 受限 '+(tot.final).toFixed(1)+'kW';
+  } else {
+    note=u*state.Ilim/1000<derateAt(uin)-0.1?'单台处于限流段':'单台处于恒功率段';
+  }
+  let liq=0,air=0;
+  rows.forEach(r=>{const f=groupFinal(r,u,uin);if(r.type==='液冷')liq+=f;else if(r.type==='风冷')air+=f;});
+  const Iout=u>0?tot.final*1000/u:0;
+  const Pin=tot.final/state.eff, Ploss=Pin-tot.final;
+  const loadRate=nTot>0?tot.final/(nTot*state.ratedP)*100:0;
+  const perCap=derateAt(uin);
+
+  ctx.strokeStyle=COL.blue;ctx.lineWidth=1;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(X(u),padT);ctx.lineTo(X(u),padT+H);ctx.stroke();ctx.setLineDash([]);
+  if(tot.final>0.01){
+    ctx.fillStyle=COL.blue;ctx.beginPath();ctx.arc(X(u),Y(Math.min(tot.final,yMax)),6,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  }
+  ctx.fillStyle=COL.navy;ctx.font='11px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='left';
+  ctx.fillText('('+u+'V, '+tot.final.toFixed(1)+'kW)',X(u)+9,Y(Math.min(tot.final,yMax))-7);
+
+  // P_cmd 目标点（若在图上）
+  const pc=computePcmd();
+  if(pc.Uset>=state.Umin && pc.Uset<=state.Umax){
+    const pt=totalFinal(Math.min(pc.Uset,state.Umax),uin);
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(X(Math.min(pc.Uset,state.Umax)),Y(Math.min(pc.able,yMax)),5,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=COL.blue2;ctx.lineWidth=1.6;ctx.stroke();
+    ctx.fillStyle=COL.blue2;ctx.font='10px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='left';
+    ctx.fillText('P_cmd='+pc.Pcmd+'kW',X(Math.min(pc.Uset,state.Umax))+7,Y(Math.min(pc.able,yMax))+3);
+  }
+
+  const chips=[
+    ['U_in',uin+'','V'],['启用台数',tot.n+'','台'],
+    ['P_avail(总)',tot.able.toFixed(1),'kW'],['U_out',u+'','V'],
+    ['I_lim(总)',tot.n*state.Ilim+'','A'],['负载需求(总)',tot.need.toFixed(1),'kW'],
+    ['实际吸收(总)',tot.final.toFixed(1),'kW'],['总电流',Iout.toFixed(0),'A'],
+    ['η',(state.eff*100).toFixed(1),'%'],['P_in',Pin.toFixed(1),'kW'],
+    ['热耗(总)',Ploss.toFixed(1),'kW'],['整机负载率',Math.round(loadRate)+'','%']
+  ];
+  fillChips(chips);
+  $('usetRes').textContent = pc.reach?'≈ '+pc.Uset+' V（'+pc.Pcmd+'kW 可达）':'不可达（能力 '+pc.maxCap.toFixed(0)+'kW）';
+  $('usetRes').style.color = pc.reach?COL.navy:'#820014';
+  setStatus(cls,'整机组合 '+tot.n+'台 / '+rows.length+'组 · '+note+' · 液冷段 '+liq.toFixed(0)+'kW / 风冷段 '+air.toFixed(0)+'kW · 单台能力 '+perCap.toFixed(1)+'kW');
+}
+
+function fillChips(arr){
+  const box=$('chips');
+  box.innerHTML='';
+  arr.forEach(function(item){
+    const k=item[0],v=item[1],u=item[2];
+    const d=document.createElement('div');d.className='chip';
+    d.innerHTML='<div class="k"></div><div class="v"></div>';
+    d.querySelector('.k').innerHTML=k;
+    const vv=d.querySelector('.v');vv.textContent=v;
+    if(u){const s=document.createElement('span');s.className='u';s.textContent=u;vv.appendChild(s);}
+    box.appendChild(d);
+  });
+}
+function setStatus(cls,msg){
+  const sb=$('status');
+  sb.className='status '+(cls==='bad'?'bad':cls==='warn'?'warn':'good');
+  sb.innerHTML='<span class="dot"></span>'+msg;
+}
+
+/* ---------- P_cmd 反算 U_set ---------- */
+function computePcmd(){
+  const Pcmd=parseFloat($('Pcmd').value)||0;
+  const rows=onRows(), uin=state.Uin;
+  const nTot=rows.reduce((s,r)=>s+r.n,0);
+  if(!nTot) return {reach:false,Uset:0,maxCap:0,able:0,Pcmd};
+  const B=rows.reduce((s,r)=>s+r.n/r.R,0);      // Σ n/R (1/Ω)
+  const Uset=Math.sqrt(Math.max(0,Pcmd)*1000/B); // V
+  let able=0,maxCap=0;
+  rows.forEach(r=>{
+    const c=capSingle(Math.min(Uset,state.Umax),uin);
+    if(c.valid) able+=Math.min(r.n*Uset*Uset/r.R/1000, r.n*c.cap);
+    const c2=capSingle(state.Umax,uin);
+    if(c2.valid) maxCap+=r.n*c2.cap;
+  });
+  const reach=(Uset<=state.Umax+0.01)&&(Uset>=state.Umin-0.01)&&(able>=Pcmd-0.05);
+  return {reach,Uset,able,maxCap,Pcmd};
+}
+
+/* ---------- UI: 折点表 ---------- */
+function renderPoints(){
+  const tb=document.querySelector('#ptTbl tbody');tb.innerHTML='';
+  const pts=[...state.points].sort((a,b)=>a.v-b.v);
+  pts.forEach((pt,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td><input type="number" step="1" min="0" max="1000" value="'+pt.v+'" data-i="'+i+'" data-k="v"></td>'+
+                 '<td><input type="number" step="0.1" min="0" max="60" value="'+pt.p+'" data-i="'+i+'" data-k="p"></td>'+
+                 '<td><button class="del" data-del="'+i+'" title="删除">✕</button></td>';
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('input').forEach(inp=>inp.addEventListener('change',function(e){
+    const i=+e.target.dataset.i,k=e.target.dataset.k;
+    const pts=[...state.points].sort((a,b)=>a.v-b.v);
+    pts[i][k]=parseFloat(e.target.value)||0;
+    state.points=pts;renderPoints();draw();
+  }));
+  tb.querySelectorAll('.del').forEach(b=>b.addEventListener('click',function(e){
+    const i=+e.target.dataset.del;
+    const pts=[...state.points].sort((a,b)=>a.v-b.v);
+    pts.splice(i,1);state.points=pts;renderPoints();draw();
+  }));
+}
+
+/* ---------- UI: 模块矩阵 ---------- */
+function esc(s){return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function renderMatrix(){
+  const tb=document.querySelector('#matTbl tbody');tb.innerHTML='';
+  state.matrix.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=
+      '<td><input type="text" value="'+esc(r.name)+'" data-i="'+i+'" data-k="name" style="width:58px"></td>'+
+      '<td><input type="number" min="0" max="16" step="1" value="'+r.n+'" data-i="'+i+'" data-k="n" style="width:38px"></td>'+
+      '<td><input type="number" min="0.1" max="100" step="0.01" value="'+r.R+'" data-i="'+i+'" data-k="R" style="width:50px"></td>'+
+      '<td><select data-i="'+i+'" data-k="type">'+
+        '<option '+(r.type==='液冷'?'selected':'')+'>液冷</option>'+
+        '<option '+(r.type==='风冷'?'selected':'')+'>风冷</option>'+
+        '<option '+(r.type==='备用'?'selected':'')+'>备用</option></select></td>'+
+      '<td><input type="checkbox" class="ck" '+(r.on?'checked':'')+' data-i="'+i+'" data-k="on"></td>'+
+      '<td><button class="del" data-del="'+i+'">✕</button></td>';
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('input[data-k],select[data-k]').forEach(el=>el.addEventListener('change',function(e){
+    const i=+e.target.dataset.i,k=e.target.dataset.k;
+    const row=state.matrix[i];
+    if(k==='name') row.name=e.target.value;
+    else if(k==='n') row.n=Math.max(0,Math.min(16,parseInt(e.target.value)||0));
+    else if(k==='R') row.R=Math.max(0.1,parseFloat(e.target.value)||0);
+    else if(k==='type') row.type=e.target.value;
+    else if(k==='on') row.on=e.target.checked;
+    draw();
+  }));
+  tb.querySelectorAll('.del').forEach(b=>b.addEventListener('click',function(e){
+    state.matrix.splice(+e.target.dataset.del,1);renderMatrix();draw();
+  }));
+}
+
+/* ---------- 事件绑定 ---------- */
+function bind(){
+  $('Uin').addEventListener('input',function(e){state.Uin=+e.target.value;syncBookmark();$('vUin').textContent=state.Uin+' V';draw();});
+  $('Uout').addEventListener('input',function(e){state.Uout=+e.target.value;$('vUout').textContent=state.Uout+' V';draw();});
+  $('uInBookmarks').querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){
+    $('Uin').value=b.dataset.v;state.Uin=+b.dataset.v;$('vUin').textContent=state.Uin+' V';syncBookmark();draw();
+  });});
+  function syncBookmark(){document.querySelectorAll('#uInBookmarks button').forEach(function(b){b.classList.toggle('on',+b.dataset.v===state.Uin);});}
+
+  ['Ilim','Umin','Umax','eff'].forEach(function(id){
+    const k={Ilim:'Ilim',Umin:'Umin',Umax:'Umax',eff:'eff'}[id];
+    $(id).addEventListener('input',function(e){
+      let v=parseFloat(e.target.value);
+      if(id==='eff') v=Math.max(0.5,Math.min(0.99,v/100));
+      state[k]=v;
+      if(state.Uout>state.Umax){state.Uout=state.Umax;$('Uout').value=state.Uout;$('vUout').textContent=state.Uout+' V';}
+      draw();
+    });
+  });
+
+  $('modeSwitch').querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){
+    $('modeSwitch').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');
+    state.mode=b.dataset.mode;
+    if(state.mode==='low'){
+      state.Ilim=100;state.Umin=150;state.Umax=500;
+      $('Ilim').value=100;$('Umin').value=150;$('Umax').value=500;
+      $('uoutRangeInfo').innerHTML='低压模式：150~500 V（U&lt;150 不可输出）';
+    } else {
+      state.Ilim=60;state.Umin=200;state.Umax=1000;
+      $('Ilim').value=60;$('Umin').value=200;$('Umax').value=1000;
+      $('uoutRangeInfo').innerHTML='高压模式：200~1000 V（U&lt;200 不可输出）';
+    }
+    $('tagMode').textContent=state.mode==='low'?'低压模式':'高压模式';
+    if(state.Uout>state.Umax){state.Uout=state.Umax;$('Uout').value=state.Uout;$('vUout').textContent=state.Uout+' V';}
+    draw();
+  });});
+
+  $('scopeSwitch').querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){
+    $('scopeSwitch').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');
+    state.scope=b.dataset.scope;
+    $('scopeTag').textContent=state.scope==='single'?'单台标定':'整机组合';
+    $('cmdline').style.display=state.scope==='multi'?'flex':'none';
+    draw();
+  });});
+
+  $('reset').addEventListener('click',function(){
+    Object.assign(state,{Ilim:100,Umin:150,Umax:500,eff:0.95,mode:'low',
+      points:[{v:250,p:15},{v:400,p:30},{v:950,p:30}],Uin:800,Uout:300,
+      matrix:[
+        {name:'液冷池A',n:3,R:5.33,type:'液冷',on:true},
+        {name:'液冷池B',n:3,R:5.33,type:'液冷',on:true},
+        {name:'液冷池C',n:3,R:5.33,type:'液冷',on:true},
+        {name:'液冷池D',n:2,R:5.33,type:'液冷',on:true},
+        {name:'风冷组G',n:2,R:6.67,type:'风冷',on:true},
+        {name:'备用S1',n:1,R:5.33,type:'备用',on:false}]});
+    $('eff').value=95;$('Ilim').value=100;$('Umin').value=150;$('Umax').value=500;
+    $('Uin').value=800;$('vUin').textContent='800 V';
+    $('Uout').value=300;$('vUout').textContent='300 V';$('Uout').max=500;
+    $('modeSwitch').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x.dataset.mode==='low');});
+    $('tagMode').textContent='低压模式';$('uoutRangeInfo').innerHTML='低压模式：150~500 V（U&lt;150 不可输出）';
+    syncBookmark();renderPoints();renderMatrix();draw();
+  });
+
+  $('addPt').addEventListener('click',function(){
+    state.points.push({v:Math.round(state.Uin/10)*10,p:Math.round(derateAt(state.Uin)*10)/10});
+    renderPoints();draw();
+  });
+  $('addRow').addEventListener('click',function(){
+    state.matrix.push({name:'组'+(state.matrix.length+1),n:1,R:5.33,type:'液冷',on:true});
+    renderMatrix();draw();
+  });
+
+  $('Pcmd').addEventListener('input',function(){
+    document.querySelectorAll('#cmdline .segrow button').forEach(function(b){b.classList.toggle('on',+b.dataset.p===+(($('Pcmd').value)||0));});
+    draw();
+  });
+  document.querySelectorAll('#cmdline .segrow button').forEach(function(b){b.addEventListener('click',function(){
+    $('Pcmd').value=b.dataset.p;
+    document.querySelectorAll('#cmdline .segrow button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');draw();
+  });});
+
+  $('export').addEventListener('click',function(){
+    if(state.scope==='single'){
+      const rows=['Uout(V),Pavail(kW),Pcap(kW),P_load_kW_R533'];
+      for(let u=0;u<=state.Umax;u+=2){
+        const e=capSingle(u,state.Uin);
+        if(e.valid)rows.push([u,e.Pavail.toFixed(3),e.cap.toFixed(3),(u*u/5.33/1000).toFixed(3)].join(','));
+      }
+      saveCsv('DCDC模块_单台_Uin'+state.Uin+'V.csv',rows);
+    } else {
+      const rows=['Uout(V),P_load_total(kW),P_cap_total(kW),P_final_total(kW),I_total(A)'];
+      for(let u=0;u<=state.Umax;u+=2){
+        if(!capSingle(u,state.Uin).valid)continue;
+        const t=totalFinal(u,state.Uin);
+        rows.push([u,t.need.toFixed(3),t.able.toFixed(3),t.final.toFixed(3),(u>0?t.final*1000/u:0).toFixed(1)].join(','));
+      }
+      saveCsv('DCDC模块_整机组合_Uin'+state.Uin+'V.csv',rows);
+    }
+  });
+  function saveCsv(name,rows){
+    const blob=new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();
+  }
+  window.addEventListener('resize',draw);
+}
+
+/* ---------- 初始化 ---------- */
+state.mode='low';
+$('tagMode').textContent='低压模式';
+$('uoutRangeInfo').innerHTML='低压模式：150~500 V（U&lt;150 不可输出）';
+renderPoints();
+renderMatrix();
+$('cmdline').style.display='flex';
+bind();
+draw();
+</script>
+</body>
+</html>
