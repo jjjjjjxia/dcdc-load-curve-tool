@@ -588,7 +588,13 @@ function bind(){
       $('uoutRangeInfo').innerHTML='高压模式：200~1000 V（U&lt;200 不可输出）';
     }
     $('tagMode').textContent=state.mode==='low'?'低压模式':'高压模式';
-    if(state.Uout>state.Umax){state.Uout=state.Umax;$('Uout').value=state.Uout;$('vUout').textContent=state.Uout+' V';}
+    // 同步 Uout 滑杆范围；切换模式时把输出电压 snap 到新模式中位（约 325V 低压 / 600V 高压），让运行工况可见地跟随
+    var uOutEl=$('Uout');
+    uOutEl.max=state.Umax;
+    uOutEl.min=state.Umin;
+    state.Uout=Math.round((state.Umin+state.Umax)/2);
+    uOutEl.value=state.Uout;
+    $('vUout').textContent=state.Uout+' V';
     draw();
   });});
 
