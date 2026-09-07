@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=1280">
-<title>DCDC 模块功率曲线匹配工具 v2 · 模块矩阵组合模拟</title>
+<title>DCDC 模块功率曲线匹配工具 v3 · 多型号下拉切换</title>
 <style>
   :root{
     --navy:#0F2A5F; --blue:#2E6BE6; --blue2:#1D4ED8; --blue3:#3B82F6;
@@ -12,10 +12,14 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;font-size:13px;line-height:1.55;-webkit-font-smoothing:antialiased}
-  .top{background:linear-gradient(180deg,#0F2A5F 0%,#1D4ED8 100%);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between}
+  .top{background:linear-gradient(180deg,#0F2A5F 0%,#1D4ED8 100%);color:#fff;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
   .top h1{margin:0;font-size:16px;font-weight:700;letter-spacing:.5px}
-  .top .sub{font-size:12px;opacity:.85}
+  .top .sub{font-size:12px;opacity:.85;margin-top:3px}
   .badge{display:inline-block;border:1px solid #fff;border-radius:10px;padding:1px 8px;font-size:11px;margin-left:8px;opacity:.92}
+  .modelbar{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);border-radius:6px;padding:5px 10px}
+  .modelbar .lbl{font-size:12px;opacity:.85}
+  .modelbar select{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%231D4ED8'/></svg>") no-repeat right 10px center;background-size:10px 6px;border:1px solid rgba(255,255,255,.0);border-radius:5px;padding:6px 28px 6px 10px;font-size:13px;color:var(--ink);font-weight:600;cursor:pointer;min-width:300px}
+  .modelbar select:focus{outline:none;box-shadow:0 0 0 3px rgba(255,255,255,.25)}
   .container{max-width:1420px;margin:0 auto;padding:14px;display:grid;grid-template-columns:396px 1fr;gap:14px}
   .card{background:#fff;border:1px solid var(--mist);border-radius:8px}
   .card h2{margin:0;padding:10px 14px;background:var(--navy);color:#fff;font-size:13px;font-weight:600;letter-spacing:.4px;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -49,7 +53,6 @@
   .del:hover{color:var(--navy)}
   .addrow{display:inline-block;margin-top:6px;font-size:11px;color:var(--blue2);cursor:pointer;border:1px dashed var(--mist);padding:3px 10px;border-radius:4px}
   .addrow:hover{border-color:var(--blue2);background:#F8FAFC}
-  .canvas-wrap{position:relative}
   canvas{display:block;width:100%;height:500px;background:#fff;border-radius:6px}
   .legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;background:#F8FAFC;border:1px solid var(--mist);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:11.5px;color:var(--ink2)}
   .legend .item{display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -80,17 +83,23 @@
 <body>
 <div class="top">
   <div>
-    <h1>DCDC 模块功率曲线匹配工具 <span class="badge">v2.0 · 模块矩阵组合模拟</span></h1>
+    <h1>DCDC 模块功率曲线匹配工具 <span class="badge">v3.0 · 多型号下拉切换</span></h1>
     <div class="sub">单台标定 ⇄ 整机组合（模块矩阵）｜ 输入电压 / 输出电压 / 负载电阻 → P-U 包络与工作点实时匹配</div>
   </div>
-  <div class="sub">30 kW 风冷 DCDC 功率模块 · 参数均可编辑</div>
+  <div class="modelbar">
+    <span class="lbl">模块型号</span>
+    <select id="modelSel">
+      <option value="M30_UU30KW">30 kW 风冷 DCDC 模块（原示例）</option>
+      <option value="M40_UU40KW_LIQ">40 kW 液冷充电模块（UR100040L-DD）</option>
+    </select>
+  </div>
 </div>
 
 <div class="container">
   <!-- ============ 左侧参数 ============ -->
   <div>
-    <div class="note">
-      ⚠ <b>模型说明</b>：单台输出能力 = min(输入电压降额功率, U<sub>out</sub>×I<sub>lim</sub>)；预置<b>低压模式</b>(I<sub>lim</sub>=100A / U 150~500V) 与 <b>高压模式</b>(I<sub>lim</sub>=60A / U 200~1000V)，输入降额折点示例 (250V,15kW)(400V,30kW)(950V,30kW)。<b>全部参数可编辑</b>，正式采用前请按所选模块实测/澄清数据校准。
+    <div class="note" id="modelNote">
+      ⚠ <b>模型说明</b>：单台输出能力 = min(输入电压降额功率, U<sub>out</sub>×I<sub>lim</sub>)。当前型号参数随上方下拉切换；<b>全部参数可编辑</b>，正式采用前请按所选模块实测/澄清数据校准。
     </div>
 
     <div class="card">
@@ -101,10 +110,7 @@
           <span class="val" id="vUin">800 V</span>
         </div>
         <input type="range" id="Uin" min="240" max="960" step="1" value="800">
-        <div class="segrow" id="uInBookmarks" style="margin-top:6px">
-          <button data-v="250">250</button><button data-v="400">400</button><button data-v="500">500</button>
-          <button data-v="600">600</button><button data-v="800" class="on">800 典型</button><button data-v="950">950</button>
-        </div>
+        <div class="segrow" id="uInBookmarks" style="margin-top:6px"></div>
 
         <div class="row" style="margin-top:12px">
           <label>输出电压 U<sub>out</sub></label>
@@ -116,20 +122,20 @@
     </div>
 
     <div class="card" style="margin-top:10px">
-      <h2>单台模块参数 <span class="tag">全模式共用</span></h2>
+      <h2>单台模块参数 <span class="tag" id="tagModelHead">全模式共用</span></h2>
       <div class="body">
         <div class="seg" id="modeSwitch" style="display:flex">
           <button class="on" data-mode="low">低压 (0~100A)</button>
           <button data-mode="high">高压 (0~60A)</button>
         </div>
         <div class="grid2" style="margin-top:8px">
-          <div class="field"><label>I<sub>lim</sub></label><input type="number" id="Ilim" min="10" max="120" step="1" value="100"><span class="unit">A</span></div>
+          <div class="field"><label>I<sub>lim</sub></label><input type="number" id="Ilim" min="10" max="160" step="1" value="100"><span class="unit">A</span></div>
           <div class="field"><label>U<sub>out,min</sub></label><input type="number" id="Umin" min="0" max="500" step="1" value="150"><span class="unit">V</span></div>
           <div class="field"><label>U<sub>out,max</sub></label><input type="number" id="Umax" min="100" max="1000" step="1" value="500"><span class="unit">V</span></div>
           <div class="field"><label>效率 η</label><input type="number" id="eff" min="80" max="99" step="0.1" value="95"><span class="unit">%</span></div>
         </div>
         <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn ghost" id="reset">恢复示例预设</button>
+          <button class="btn ghost" id="reset">恢复当前型号预设</button>
         </div>
       </div>
     </div>
@@ -152,7 +158,7 @@
           <tbody></tbody>
         </table>
         <span class="addrow" id="addRow">+ 添加负载组</span>
-        <div class="mini" style="margin-top:6px">预置 = 0905 柜体布置 V1：液冷 11 台（每台 30kW 液冷块，R=5.33Ω）＋风冷 2 台（每台 24kW@400V，R=6.67Ω → 48kW）＋备用 1 台（默认停用）。请按整机各支路实际电阻改。</div>
+        <div class="mini" style="margin-top:6px" id="matrixHint">预置 = 0905 柜体布置 V1：液冷 11 台 + 风冷 2 台 + 备用 1 台。请按整机各支路实际电阻改。</div>
       </div>
     </div>
   </div>
@@ -179,7 +185,7 @@
       <h2><span>数值结算</span><span class="tag" id="scopeTag">整机组合</span></h2>
       <div class="cmdline" id="cmdline">
         <label style="font-size:12px;color:var(--ink2)">恒功率命令 P<sub>cmd</sub></label>
-        <input type="number" id="Pcmd" min="1" max="400" step="1" value="320">
+        <input type="number" id="Pcmd" min="1" max="500" step="1" value="320">
         <span style="color:var(--ink3)">kW → 建议 U<sub>set</sub> =</span><b id="usetRes">—</b>
         <span class="segrow" style="display:inline-flex">
           <button data-p="160">160</button><button data-p="240">240</button><button data-p="320" class="on">320</button><button data-p="368">368</button><button data-p="390">390满</button>
@@ -202,19 +208,133 @@ const cv=$('cv'), ctx=cv.getContext('2d');
 const COL={navy:'#0F2A5F',blue:'#2E6BE6',blue2:'#1D4ED8',blue3:'#3B82F6',line:'#94A3B8',ink2:'#475569',ink3:'#64748B',mist:'#E2E8F0'};
 const GRP_COL=['#1D4ED8','#2E6BE6','#3B82F6','#60A5FA','#2563EB','#93C5FD'];
 
+/* ---------- 模块型号预设（v3 新增） ---------- */
+const MODEL_PRESETS={
+  M30_UU30KW:{
+    name:'30 kW 风冷 DCDC 模块（原示例）',
+    ratedP:30, eff:0.95,
+    UinRange:[240,960], UinBookmarks:[250,400,500,600,800,950],
+    points:[{v:250,p:15},{v:400,p:30},{v:950,p:30}],
+    modes:{
+      low: {Ilim:100, Umin:150, Umax:500, label:'低压 (0~100A)'},
+      high:{Ilim:60,  Umin:200, Umax:1000,label:'高压 (0~60A)'}
+    },
+    defaultMode:'low', defaultUout:300, defaultUin:800,
+    matrix:[
+      {name:'液冷池A',n:3,R:5.33,type:'液冷',on:true},
+      {name:'液冷池B',n:3,R:5.33,type:'液冷',on:true},
+      {name:'液冷池C',n:3,R:5.33,type:'液冷',on:true},
+      {name:'液冷池D',n:2,R:5.33,type:'液冷',on:true},
+      {name:'风冷组G',n:2,R:6.67,type:'风冷',on:true},
+      {name:'备用S1', n:1,R:5.33,type:'备用',on:false}
+    ],
+    matrixHint:'预置 = 0905 柜体布置 V1：液冷 11 台（R=5.33Ω/台）＋ 风冷 2 台（R=6.67Ω → 48kW @400V）＋ 备用 1 台（默认停用）。请按整机各支路实际电阻改。',
+    note:'30 kW 风冷：输入 250~950V · 降额 (250,15)(400,30)(950,30)；低压 150~500V/I<sub>lim</sub>=100A；高压 200~1000V/I<sub>lim</sub>=60A；效率 95%；散热 风冷（模块自风冷）。'
+  },
+  M40_UU40KW_LIQ:{
+    name:'40 kW 液冷充电模块（UR100040L-DD）',
+    ratedP:40, eff:0.96,
+    UinRange:[240,870], UinBookmarks:[250,400,500,600,750,850],
+    points:[{v:250,p:25},{v:400,p:40},{v:850,p:40}],
+    modes:{
+      low: {Ilim:133, Umin:150, Umax:500, label:'低压 (0~133A)'},
+      high:{Ilim:80,  Umin:200, Umax:1000,label:'高压 (0~80A)'}
+    },
+    defaultMode:'low', defaultUout:325, defaultUin:800,
+    matrix:[
+      {name:'液冷组A',n:4,R:4.00,type:'液冷',on:true},
+      {name:'液冷组B',n:4,R:4.00,type:'液冷',on:true},
+      {name:'液冷组C',n:1,R:4.00,type:'液冷',on:true},
+      {name:'备用S1', n:1,R:4.00,type:'备用',on:false}
+    ],
+    matrixHint:'预置 = 整机 320kW 液冷：9 台 40kW @400V（R=4Ω/台 → 40kW/台，9×40=360kW 上限，备用 1 台停用）；若需 368kW 整机请改为 10 启用 + 1 备用。请按实际支路电阻改。',
+    note:'40 kW 液冷 UR100040L-DD：输入 250~850V · 降额 (250,25)(400,40)(850,40)；低压 150~500V/I<sub>lim</sub>=133A；高压 200~1000V/I<sub>lim</sub>=80A；效率 ≥96%；散热 液冷（CDU：乙二醇:水 60:40，6L/min@25℃）。'
+  }
+};
+
 const state={
+  modelId:'M30_UU30KW',
   Uin:800, Uout:300, Ilim:100, Umin:150, Umax:500, eff:0.95,
   mode:'low', scope:'multi', ratedP:30,
   points:[{v:250,p:15},{v:400,p:30},{v:950,p:30}],
-  matrix:[
-    {name:'液冷池A', n:3, R:5.33, type:'液冷', on:true},
-    {name:'液冷池B', n:3, R:5.33, type:'液冷', on:true},
-    {name:'液冷池C', n:3, R:5.33, type:'液冷', on:true},
-    {name:'液冷池D', n:2, R:5.33, type:'液冷', on:true},
-    {name:'风冷组G', n:2, R:6.67, type:'风冷', on:true},
-    {name:'备用S1',  n:1, R:5.33, type:'备用', on:false}
-  ]
+  matrix:[]
 };
+
+function applyModel(id){
+  const p=MODEL_PRESETS[id];
+  if(!p) return;
+  state.modelId=id;
+  state.ratedP=p.ratedP;
+  state.eff=p.eff;
+  state.Uin=p.defaultUin;
+  state.Uout=p.defaultUout;
+  state.mode=p.defaultMode;
+  state.Ilim=p.modes[state.mode].Ilim;
+  state.Umin=p.modes[state.mode].Umin;
+  state.Umax=p.modes[state.mode].Umax;
+  state.points=p.points.map(pt=>({v:pt.v,p:pt.p}));
+  state.matrix=p.matrix.map(r=>({name:r.name,n:r.n,R:r.R,type:r.type,on:r.on}));
+
+  // 顶部条 select 同步
+  const sel=$('modelSel'); if(sel && sel.value!==id) sel.value=id;
+
+  // Uin 滑杆范围 + 书签
+  const uinEl=$('Uin');
+  uinEl.min=p.UinRange[0];
+  uinEl.max=p.UinRange[1];
+  uinEl.value=state.Uin;
+  $('vUin').textContent=state.Uin+' V';
+  const bm=$('uInBookmarks');
+  bm.innerHTML='';
+  p.UinBookmarks.forEach(function(v){
+    const b=document.createElement('button');
+    b.dataset.v=v;
+    b.textContent=v+(v===state.Uin?' 典型':'');
+    bm.appendChild(b);
+  });
+  bm.querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){
+    $('Uin').value=b.dataset.v;state.Uin=+b.dataset.v;$('vUin').textContent=state.Uin+' V';syncBookmark();draw();
+  });});
+  syncBookmark();
+
+  // Uout 滑杆范围
+  const uOutEl=$('Uout');
+  uOutEl.min=state.Umin;
+  uOutEl.max=state.Umax;
+  uOutEl.value=state.Uout;
+  $('vUout').textContent=state.Uout+' V';
+
+  // 模式按钮
+  $('modeSwitch').querySelectorAll('button').forEach(function(x){
+    const m=x.dataset.mode;
+    const mp=p.modes[m];
+    x.textContent=mp.label;
+    x.classList.toggle('on',m===state.mode);
+  });
+  $('tagMode').textContent=state.mode==='low'?'低压模式':'高压模式';
+  $('uoutRangeInfo').innerHTML=(state.mode==='low'?'低压模式':'高压模式')+'：'+state.Umin+'~'+state.Umax+' V（U&lt;'+state.Umin+' 不可输出）';
+
+  // 单台参数
+  $('Ilim').value=state.Ilim;
+  $('Umin').value=state.Umin;
+  $('Umax').value=state.Umax;
+  $('eff').value=Math.round(state.eff*100);
+
+  // 折点 + 矩阵重渲
+  renderPoints();
+  renderMatrix();
+
+  // 顶部 note + 矩阵说明
+  $('modelNote').innerHTML='⚠ <b>模型说明</b>：当前型号 = <b>'+p.name+'</b>。'+p.note+' 全部参数可编辑。';
+  $('matrixHint').textContent=p.matrixHint;
+  $('tagModelHead').textContent=p.name.split('（')[0]+' · 模式独立参数';
+
+  // cmdline 输入上限随 ratedP 调
+  $('Pcmd').max=Math.max(400,Math.round(p.ratedP*16));
+
+  draw();
+  function syncBookmark(){bm.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',+b.dataset.v===state.Uin);});}
+}
 
 /* ---------- 核心模型 ---------- */
 function derateAt(uin){
@@ -229,14 +349,12 @@ function derateAt(uin){
   }
   return 0;
 }
-// 单台在给定 Uout / Uin 的可用功率上限(kW)
 function capSingle(u, uin){
   const Pavail=derateAt(uin);
   const Pcl=u*state.Ilim/1000;
   return {cap:Math.min(Pavail,Pcl), Pavail, valid:u>=state.Umin&&u<=state.Umax};
 }
 function onRows(){ return state.matrix.filter(r=>r.on && r.n>0 && r.R>0); }
-// 组：每台负载 = U²/R；组需求=n×；组能力=n×cap；实际=min
 function groupFinal(r,u,uin){
   const c=capSingle(u,uin);
   if(!c.valid) return 0;
@@ -265,7 +383,7 @@ function draw(){
   cv.width=w*dpr; cv.height=h*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
   const single=(state.scope==='single');
   const xMax=Math.max(state.Umax, state.mode==='low'?500:1000);
-  const yMax=single?Math.max(35,state.ratedP*1.15):niceY();
+  const yMax=single?Math.max(40,state.ratedP*1.15):niceY();
   const yStep=single?5:50;
   const padL=50,padR=16,padT=18,padB=30;
   const W=w-padL-padR,H=h-padT-padB;
@@ -308,12 +426,12 @@ function drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     '<div class="item"><span class="sw dash1"></span>其他 U_in 参考</div>'+
     '<div class="item"><span class="sw" style="border-top:1px dashed #3B82F6"></span>负载线 U²/R (R=5.33)</div>'+
     '<div class="item"><span class="dot"></span>工作点</div>'+
-    '<div class="item"><span class="sw" style="background:#94A3B8"></span>30 kW 满载参考</div>';
+    '<div class="item"><span class="sw" style="background:#94A3B8"></span>'+state.ratedP+' kW 满载参考</div>';
 
   ctx.strokeStyle=COL.line;ctx.lineWidth=1;ctx.setLineDash([3,4]);
-  ctx.beginPath();ctx.moveTo(padL,Y(30));ctx.lineTo(padL+W,Y(30));ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(padL,Y(state.ratedP));ctx.lineTo(padL+W,Y(state.ratedP));ctx.stroke();ctx.setLineDash([]);
   ctx.fillStyle=COL.line;ctx.font='11px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='left';
-  ctx.fillText('30 kW 满载',padL+6,Y(30)-3);
+  ctx.fillText(state.ratedP+' kW 满载',padL+6,Y(state.ratedP)-3);
 
   function env(uin,color,lw,dash){
     ctx.strokeStyle=color;ctx.lineWidth=lw;ctx.setLineDash(dash||[]);
@@ -326,7 +444,8 @@ function drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     }
     ctx.stroke();ctx.setLineDash([]);
   }
-  [250,400,800,950].forEach(vi=>{if(vi!==uin) env(vi,COL.line,1,[4,4]);});
+  const refIns=state.mode==='low'?[250,400,800,950]:[250,400,750,850];
+  refIns.filter(vi=>vi!==uin).forEach(vi=>env(vi,COL.line,1,[4,4]));
   env(uin,COL.navy,2.6,null);
 
   const R_single=5.33;
@@ -395,16 +514,13 @@ function drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     }
     ctx.stroke();ctx.setLineDash([]);
   }
-  // 各组能力包络（细蓝阶区分）
   rows.forEach((r,idx)=>{
     pathFor(v=>{const c=capSingle(v,uin);return c.valid?r.n*c.cap:0;}, GRP_COL[idx%GRP_COL.length], 1.1, [2,3]);
   });
-  // 整机能力包络
   pathFor(v=>{
     let s=0;rows.forEach(r=>{const c=capSingle(v,uin);if(c.valid)s+=r.n*c.cap;});
     return s;
   }, COL.navy, 2.6, null);
-  // 整机负载需求
   pathFor(v=>{
     let s=0;rows.forEach(r=>{if(capSingle(v,uin).valid)s+=r.n*v*v/r.R/1000;});
     return s;
@@ -434,7 +550,6 @@ function drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep){
   ctx.fillStyle=COL.navy;ctx.font='11px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='left';
   ctx.fillText('('+u+'V, '+tot.final.toFixed(1)+'kW)',X(u)+9,Y(Math.min(tot.final,yMax))-7);
 
-  // P_cmd 目标点（若在图上）
   const pc=computePcmd();
   if(pc.Uset>=state.Umin && pc.Uset<=state.Umax){
     const pt=totalFinal(Math.min(pc.Uset,state.Umax),uin);
@@ -478,14 +593,13 @@ function setStatus(cls,msg){
   sb.innerHTML='<span class="dot"></span>'+msg;
 }
 
-/* ---------- P_cmd 反算 U_set ---------- */
 function computePcmd(){
   const Pcmd=parseFloat($('Pcmd').value)||0;
   const rows=onRows(), uin=state.Uin;
   const nTot=rows.reduce((s,r)=>s+r.n,0);
   if(!nTot) return {reach:false,Uset:0,maxCap:0,able:0,Pcmd};
-  const B=rows.reduce((s,r)=>s+r.n/r.R,0);      // Σ n/R (1/Ω)
-  const Uset=Math.sqrt(Math.max(0,Pcmd)*1000/B); // V
+  const B=rows.reduce((s,r)=>s+r.n/r.R,0);
+  const Uset=Math.sqrt(Math.max(0,Pcmd)*1000/B);
   let able=0,maxCap=0;
   rows.forEach(r=>{
     const c=capSingle(Math.min(Uset,state.Umax),uin);
@@ -497,7 +611,6 @@ function computePcmd(){
   return {reach,Uset,able,maxCap,Pcmd};
 }
 
-/* ---------- UI: 折点表 ---------- */
 function renderPoints(){
   const tb=document.querySelector('#ptTbl tbody');tb.innerHTML='';
   const pts=[...state.points].sort((a,b)=>a.v-b.v);
@@ -521,7 +634,6 @@ function renderPoints(){
   }));
 }
 
-/* ---------- UI: 模块矩阵 ---------- */
 function esc(s){return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function renderMatrix(){
   const tb=document.querySelector('#matTbl tbody');tb.innerHTML='';
@@ -529,7 +641,7 @@ function renderMatrix(){
     const tr=document.createElement('tr');
     tr.innerHTML=
       '<td><input type="text" value="'+esc(r.name)+'" data-i="'+i+'" data-k="name" style="width:58px"></td>'+
-      '<td><input type="number" min="0" max="16" step="1" value="'+r.n+'" data-i="'+i+'" data-k="n" style="width:38px"></td>'+
+      '<td><input type="number" min="0" max="32" step="1" value="'+r.n+'" data-i="'+i+'" data-k="n" style="width:38px"></td>'+
       '<td><input type="number" min="0.1" max="100" step="0.01" value="'+r.R+'" data-i="'+i+'" data-k="R" style="width:50px"></td>'+
       '<td><select data-i="'+i+'" data-k="type">'+
         '<option '+(r.type==='液冷'?'selected':'')+'>液冷</option>'+
@@ -543,7 +655,7 @@ function renderMatrix(){
     const i=+e.target.dataset.i,k=e.target.dataset.k;
     const row=state.matrix[i];
     if(k==='name') row.name=e.target.value;
-    else if(k==='n') row.n=Math.max(0,Math.min(16,parseInt(e.target.value)||0));
+    else if(k==='n') row.n=Math.max(0,Math.min(32,parseInt(e.target.value)||0));
     else if(k==='R') row.R=Math.max(0.1,parseFloat(e.target.value)||0);
     else if(k==='type') row.type=e.target.value;
     else if(k==='on') row.on=e.target.checked;
@@ -554,13 +666,11 @@ function renderMatrix(){
   }));
 }
 
-/* ---------- 事件绑定 ---------- */
 function bind(){
   $('Uin').addEventListener('input',function(e){state.Uin=+e.target.value;syncBookmark();$('vUin').textContent=state.Uin+' V';draw();});
   $('Uout').addEventListener('input',function(e){state.Uout=+e.target.value;$('vUout').textContent=state.Uout+' V';draw();});
-  $('uInBookmarks').querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){
-    $('Uin').value=b.dataset.v;state.Uin=+b.dataset.v;$('vUin').textContent=state.Uin+' V';syncBookmark();draw();
-  });});
+  $('modelSel').addEventListener('change',function(e){applyModel(e.target.value);});
+
   function syncBookmark(){document.querySelectorAll('#uInBookmarks button').forEach(function(b){b.classList.toggle('on',+b.dataset.v===state.Uin);});}
 
   ['Ilim','Umin','Umax','eff'].forEach(function(id){
@@ -570,6 +680,7 @@ function bind(){
       if(id==='eff') v=Math.max(0.5,Math.min(0.99,v/100));
       state[k]=v;
       if(state.Uout>state.Umax){state.Uout=state.Umax;$('Uout').value=state.Uout;$('vUout').textContent=state.Uout+' V';}
+      if(state.Uout<state.Umin){state.Uout=state.Umin;$('Uout').value=state.Uout;$('vUout').textContent=state.Uout+' V';}
       draw();
     });
   });
@@ -578,23 +689,15 @@ function bind(){
     $('modeSwitch').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
     b.classList.add('on');
     state.mode=b.dataset.mode;
-    if(state.mode==='low'){
-      state.Ilim=100;state.Umin=150;state.Umax=500;
-      $('Ilim').value=100;$('Umin').value=150;$('Umax').value=500;
-      $('uoutRangeInfo').innerHTML='低压模式：150~500 V（U&lt;150 不可输出）';
-    } else {
-      state.Ilim=60;state.Umin=200;state.Umax=1000;
-      $('Ilim').value=60;$('Umin').value=200;$('Umax').value=1000;
-      $('uoutRangeInfo').innerHTML='高压模式：200~1000 V（U&lt;200 不可输出）';
-    }
+    const mp=MODEL_PRESETS[state.modelId].modes[state.mode];
+    state.Ilim=mp.Ilim;state.Umin=mp.Umin;state.Umax=mp.Umax;
+    $('Ilim').value=mp.Ilim;$('Umin').value=mp.Umin;$('Umax').value=mp.Umax;
     $('tagMode').textContent=state.mode==='low'?'低压模式':'高压模式';
-    // 同步 Uout 滑杆范围；切换模式时把输出电压 snap 到新模式中位（约 325V 低压 / 600V 高压），让运行工况可见地跟随
     var uOutEl=$('Uout');
-    uOutEl.max=state.Umax;
-    uOutEl.min=state.Umin;
+    uOutEl.max=state.Umax;uOutEl.min=state.Umin;
     state.Uout=Math.round((state.Umin+state.Umax)/2);
-    uOutEl.value=state.Uout;
-    $('vUout').textContent=state.Uout+' V';
+    uOutEl.value=state.Uout;$('vUout').textContent=state.Uout+' V';
+    $('uoutRangeInfo').innerHTML=(state.mode==='low'?'低压模式':'高压模式')+'：'+state.Umin+'~'+state.Umax+' V（U&lt;'+state.Umin+' 不可输出）';
     draw();
   });});
 
@@ -607,30 +710,14 @@ function bind(){
     draw();
   });});
 
-  $('reset').addEventListener('click',function(){
-    Object.assign(state,{Ilim:100,Umin:150,Umax:500,eff:0.95,mode:'low',
-      points:[{v:250,p:15},{v:400,p:30},{v:950,p:30}],Uin:800,Uout:300,
-      matrix:[
-        {name:'液冷池A',n:3,R:5.33,type:'液冷',on:true},
-        {name:'液冷池B',n:3,R:5.33,type:'液冷',on:true},
-        {name:'液冷池C',n:3,R:5.33,type:'液冷',on:true},
-        {name:'液冷池D',n:2,R:5.33,type:'液冷',on:true},
-        {name:'风冷组G',n:2,R:6.67,type:'风冷',on:true},
-        {name:'备用S1',n:1,R:5.33,type:'备用',on:false}]});
-    $('eff').value=95;$('Ilim').value=100;$('Umin').value=150;$('Umax').value=500;
-    $('Uin').value=800;$('vUin').textContent='800 V';
-    $('Uout').value=300;$('vUout').textContent='300 V';$('Uout').max=500;
-    $('modeSwitch').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x.dataset.mode==='low');});
-    $('tagMode').textContent='低压模式';$('uoutRangeInfo').innerHTML='低压模式：150~500 V（U&lt;150 不可输出）';
-    syncBookmark();renderPoints();renderMatrix();draw();
-  });
+  $('reset').addEventListener('click',function(){applyModel(state.modelId);});
 
   $('addPt').addEventListener('click',function(){
     state.points.push({v:Math.round(state.Uin/10)*10,p:Math.round(derateAt(state.Uin)*10)/10});
     renderPoints();draw();
   });
   $('addRow').addEventListener('click',function(){
-    state.matrix.push({name:'组'+(state.matrix.length+1),n:1,R:5.33,type:'液冷',on:true});
+    state.matrix.push({name:'组'+(state.matrix.length+1),n:1,R:5,type:'液冷',on:true});
     renderMatrix();draw();
   });
 
@@ -651,7 +738,7 @@ function bind(){
         const e=capSingle(u,state.Uin);
         if(e.valid)rows.push([u,e.Pavail.toFixed(3),e.cap.toFixed(3),(u*u/5.33/1000).toFixed(3)].join(','));
       }
-      saveCsv('DCDC模块_单台_Uin'+state.Uin+'V.csv',rows);
+      saveCsv('DCDC模块_单台_Uin'+state.Uin+'V_'+state.modelId+'.csv',rows);
     } else {
       const rows=['Uout(V),P_load_total(kW),P_cap_total(kW),P_final_total(kW),I_total(A)'];
       for(let u=0;u<=state.Umax;u+=2){
@@ -659,7 +746,7 @@ function bind(){
         const t=totalFinal(u,state.Uin);
         rows.push([u,t.need.toFixed(3),t.able.toFixed(3),t.final.toFixed(3),(u>0?t.final*1000/u:0).toFixed(1)].join(','));
       }
-      saveCsv('DCDC模块_整机组合_Uin'+state.Uin+'V.csv',rows);
+      saveCsv('DCDC模块_整机组合_Uin'+state.Uin+'V_'+state.modelId+'.csv',rows);
     }
   });
   function saveCsv(name,rows){
@@ -670,12 +757,7 @@ function bind(){
 }
 
 /* ---------- 初始化 ---------- */
-state.mode='low';
-$('tagMode').textContent='低压模式';
-$('uoutRangeInfo').innerHTML='低压模式：150~500 V（U&lt;150 不可输出）';
-renderPoints();
-renderMatrix();
-$('cmdline').style.display='flex';
+applyModel(state.modelId);
 bind();
 draw();
 </script>
