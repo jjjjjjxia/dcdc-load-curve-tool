@@ -479,8 +479,8 @@ function drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     ['U_in',uin+'','V'],['P_avail(单台)',e.Pavail.toFixed(2),'kW'],
     ['U_out',u+'','V'],['I_lim',state.Ilim+'','A'],
     ['负载请求',(u*u/R_single/1000).toFixed(2),'kW'],['实际输出',Pfinal.toFixed(2),'kW'],
-    ['I_out',Iout.toFixed(1),'A'],['η',(state.eff*100).toFixed(1),'%'],
-    ['P_in',Pin.toFixed(2),'kW'],['热耗',Ploss.toFixed(2),'kW'],
+    ['I_out',Iout.toFixed(1),'A'],['I_in',(Pin>0?Pin*1000/state.Uin:0).toFixed(1),'A'],
+    ['η',(state.eff*100).toFixed(1),'%'],['P_in',Pin.toFixed(2),'kW'],['热耗',Ploss.toFixed(2),'kW'],
     ['示例负载R',R_single.toFixed(2),'Ω'],['包络占位',e.Pavail>0?Math.round(Pfinal/e.Pavail*100)+'':'0','%']
   ];
   fillChips(chips);
@@ -565,8 +565,8 @@ function drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     ['P_avail(总)',tot.able.toFixed(1),'kW'],['U_out',u+'','V'],
     ['I_lim(总)',tot.n*state.Ilim+'','A'],['负载需求(总)',tot.need.toFixed(1),'kW'],
     ['实际吸收(总)',tot.final.toFixed(1),'kW'],['总电流',Iout.toFixed(0),'A'],
-    ['η',(state.eff*100).toFixed(1),'%'],['P_in',Pin.toFixed(1),'kW'],
-    ['热耗(总)',Ploss.toFixed(1),'kW'],['整机负载率',Math.round(loadRate)+'','%']
+    ['η',(state.eff*100).toFixed(1),'%'],['I_in(总)',(Pin>0?Pin*1000/state.Uin:0).toFixed(0),'A'],
+    ['P_in',Pin.toFixed(1),'kW'],['热耗(总)',Ploss.toFixed(1),'kW'],['整机负载率',Math.round(loadRate)+'','%']
   ];
   fillChips(chips);
   $('usetRes').textContent = pc.reach?'≈ '+pc.Uset+' V（'+pc.Pcmd+'kW 可达）':'不可达（能力 '+pc.maxCap.toFixed(0)+'kW）';
