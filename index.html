@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=1280">
-<title>DCDC 模块功率曲线匹配工具 v3 · 多型号下拉切换</title>
+<title>DCDC 模块功率曲线匹配工具 v5 · 多型号 + 效率曲线分电压段拟合</title>
 <style>
   :root{
     --navy:#0F2A5F; --blue:#2E6BE6; --blue2:#1D4ED8; --blue3:#3B82F6;
@@ -40,20 +40,26 @@
   .field{display:flex;align-items:center;gap:6px;margin:6px 0}
   .field label{font-size:12px;color:var(--ink2);min-width:88px;white-space:nowrap}
   .field input[type="number"]{width:76px;padding:4px 6px;border:1px solid var(--mist);border-radius:4px;font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+  .field input[type="number"]:disabled{background:#F1F5F9;color:var(--ink3)}
   .field .unit{font-size:11px;color:var(--ink3)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px}
-  table.pts,table.mat{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
-  table.pts th,table.pts td,table.mat th,table.mat td{padding:3px 4px;border-bottom:1px solid var(--mist);text-align:center}
-  table.pts th,table.mat th{color:var(--ink3);font-weight:500;background:#F8FAFC;white-space:nowrap}
+  .grid2 .full{grid-column:span 2}
+  table.pts,table.mat,table.eff{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  table.pts th,table.pts td,table.mat th,table.mat td,table.eff th,table.eff td{padding:3px 4px;border-bottom:1px solid var(--mist);text-align:center}
+  table.pts th,table.mat th,table.eff th{color:var(--ink3);font-weight:500;background:#F8FAFC;white-space:nowrap}
   table.mat td input[type="text"],table.mat td input[type="number"]{width:100%;padding:3px 4px;border:1px solid var(--mist);border-radius:3px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;font-family:inherit}
   table.mat td input[type="text"]{text-align:left}
   table.mat td select{padding:2px;border:1px solid var(--mist);border-radius:3px;font-size:11px}
   table.mat .ck{width:16px;height:16px;accent-color:var(--blue2);vertical-align:middle}
+  table.eff td input[type="number"]{width:100%;padding:3px 4px;border:1px solid var(--mist);border-radius:3px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;font-family:inherit}
+  table.eff caption{caption-side:top;text-align:left;font-size:12px;color:var(--navy);font-weight:600;padding:6px 0 2px}
+  table.eff caption .star{color:var(--blue2);font-weight:500;margin-left:6px;font-size:11px}
   .del{background:transparent;border:0;color:var(--ink3);cursor:pointer;font-size:13px}
   .del:hover{color:var(--navy)}
   .addrow{display:inline-block;margin-top:6px;font-size:11px;color:var(--blue2);cursor:pointer;border:1px dashed var(--mist);padding:3px 10px;border-radius:4px}
   .addrow:hover{border-color:var(--blue2);background:#F8FAFC}
-  canvas{display:block;width:100%;height:500px;background:#fff;border-radius:6px}
+  canvas#cv{display:block;width:100%;height:480px;background:#fff;border-radius:6px}
+  canvas#cvEff{display:block;width:100%;height:240px;background:#fff;border-radius:6px}
   .legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;background:#F8FAFC;border:1px solid var(--mist);border-radius:6px;padding:8px 12px;margin-top:8px;font-size:11.5px;color:var(--ink2)}
   .legend .item{display:flex;align-items:center;gap:6px;white-space:nowrap}
   .legend .sw{width:22px;height:2px;border-radius:1px;flex:none}
@@ -65,6 +71,7 @@
   .chip .k{font-size:11px;color:var(--ink3);white-space:nowrap}
   .chip .v{font-size:15px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums;margin-top:2px;white-space:nowrap}
   .chip .u{font-size:10px;color:var(--ink3);margin-left:3px;font-weight:400}
+  .chip.eta .v{color:#1D4ED8}
   .cmdline{display:flex;align-items:center;gap:8px;padding:10px 14px 0;font-size:12px;color:var(--ink2);flex-wrap:wrap}
   .cmdline input[type="number"]{width:86px;padding:4px 6px;border:1px solid var(--mist);border-radius:4px;font-size:13px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:var(--navy)}
   .cmdline b{color:var(--navy);font-variant-numeric:tabular-nums}
@@ -77,14 +84,17 @@
   .btn{background:var(--blue2);color:#fff;border:0;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer}
   .btn:hover{background:#1E40AF}
   .btn.ghost{background:transparent;color:var(--blue2);border:1px solid var(--blue2)}
+  .btn.sm{padding:2px 8px;font-size:11px}
   .mini{font-size:11px;color:var(--ink3);margin-top:4px}
+  .etaBadge{display:inline-block;background:#EAF1FE;border:1px solid #BFD3F4;color:var(--navy);font-size:11px;border-radius:4px;padding:1px 8px;margin-left:6px;font-variant-numeric:tabular-nums;font-weight:600}
+  .etaBadge.manual{background:#FFF7E6;border-color:#FFD591;color:#7A4A00}
 </style>
 </head>
 <body>
 <div class="top">
   <div>
-    <h1>DCDC 模块功率曲线匹配工具 <span class="badge">v3.0 · 多型号下拉切换</span></h1>
-    <div class="sub">单台标定 ⇄ 整机组合（模块矩阵）｜ 输入电压 / 输出电压 / 负载电阻 → P-U 包络与工作点实时匹配</div>
+    <h1>DCDC 模块功率曲线匹配工具 <span class="badge">v5.0 · 多型号 + 效率曲线分电压段拟合</span></h1>
+    <div class="sub">单台标定 ⇄ 整机组合（模块矩阵）｜ 输入电压 / 输出电压 / 负载电阻 → P-U 包络与工作点实时匹配｜ η 按电压段折点 + 负载率修正拟合</div>
   </div>
   <div class="modelbar">
     <span class="lbl">模块型号</span>
@@ -100,7 +110,7 @@
   <!-- ============ 左侧参数 ============ -->
   <div>
     <div class="note" id="modelNote">
-      ⚠ <b>模型说明</b>：单台输出能力 = min(输入电压降额功率, U<sub>out</sub>×I<sub>lim</sub>)。当前型号参数随上方下拉切换；<b>全部参数可编辑</b>，正式采用前请按所选模块实测/澄清数据校准。
+      ⚠ <b>模型说明</b>：单台输出能力 = min(输入电压降额功率, U<sub>out</sub>×I<sub>lim</sub>)；效率 η = 电压段折点（η vs U<sub>out</sub>）× 负载率修正（η vs k=P/P<sub>rated</sub>）；当前型号参数随上方下拉切换；<b>全部参数可编辑</b>，正式采用前请按所选模块实测/澄清数据校准。
     </div>
 
     <div class="card">
@@ -133,7 +143,16 @@
           <div class="field"><label>I<sub>lim</sub></label><input type="number" id="Ilim" min="10" max="160" step="1" value="100"><span class="unit">A</span></div>
           <div class="field"><label>U<sub>out,min</sub></label><input type="number" id="Umin" min="0" max="500" step="1" value="150"><span class="unit">V</span></div>
           <div class="field"><label>U<sub>out,max</sub></label><input type="number" id="Umax" min="100" max="1000" step="1" value="500"><span class="unit">V</span></div>
-          <div class="field"><label>效率 η</label><input type="number" id="eff" min="80" max="99" step="0.1" value="95"><span class="unit">%</span></div>
+          <div class="field full">
+            <label>效率 η</label>
+            <span class="seg" id="etaMode" style="display:inline-flex">
+              <button class="on" data-mode="auto">自动（拟合）</button>
+              <button data-mode="manual">手动（覆盖）</button>
+            </span>
+            <input type="number" id="eff" min="80" max="99" step="0.1" value="95" disabled>
+            <span class="unit">%</span>
+            <span id="etaFitBadge" class="etaBadge">拟合 η</span>
+          </div>
         </div>
         <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn ghost" id="reset">恢复当前型号预设</button>
@@ -147,6 +166,34 @@
         <table class="pts" id="ptTbl"><thead><tr><th>U<sub>in</sub> (V)</th><th>P<sub>avail</sub> (kW)</th><th></th></tr></thead><tbody></tbody></table>
         <span class="addrow" id="addPt">+ 添加折点</span>
         <div class="mini">折点间线性插值；U&lt;最小折点 → P=0；U&gt;最大折点 → 钳位上限。</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <h2>效率曲线拟合折点 <span class="tag">分电压段 + 负载率</span></h2>
+      <div class="body">
+        <table class="eff" id="effLowTbl">
+          <caption>低压段 η vs U<sub>out</sub> <span class="star">（锚定 ≤ 手册额定效率）</span></caption>
+          <thead><tr><th>U<sub>out</sub> (V)</th><th>η (%)</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <span class="addrow" data-seg="low">+ 添加低压段折点</span>
+
+        <table class="eff" id="effHighTbl" style="margin-top:10px">
+          <caption>高压段 η vs U<sub>out</sub> <span class="star">（锚定 ≥ 手册峰值效率）</span></caption>
+          <thead><tr><th>U<sub>out</sub> (V)</th><th>η (%)</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <span class="addrow" data-seg="high">+ 添加高压段折点</span>
+
+        <table class="eff" id="effLoadTbl" style="margin-top:10px">
+          <caption>负载率修正 η vs k <span class="star">（k=P/P<sub>rated</sub>, f=相对满载因子）</span></caption>
+          <thead><tr><th>k (负载率)</th><th>f (相对满载)</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <span class="addrow" data-seg="load">+ 添加负载率折点</span>
+
+        <div class="mini">实际 η = 电压段折点(U<sub>out</sub>) × 负载率折点(k)；切换型号自动恢复示例锚点，<b>实测数据回填后覆盖</b>。</div>
       </div>
     </div>
 
@@ -183,6 +230,16 @@
     </div>
 
     <div class="card" style="margin-top:10px">
+      <h2><span>效率曲线 η vs U<sub>out</sub> · 当前模式</span>
+        <span class="tag" id="tagEff">自动拟合</span>
+      </h2>
+      <div class="body">
+        <canvas id="cvEff"></canvas>
+        <div class="legend" id="legendEff"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
       <h2><span>数值结算</span><span class="tag" id="scopeTag">整机组合</span></h2>
       <div class="cmdline" id="cmdline">
         <label style="font-size:12px;color:var(--ink2)">恒功率命令 P<sub>cmd</sub></label>
@@ -195,7 +252,7 @@
       <div class="chips" id="chips"></div>
       <div class="status" id="status"><span class="dot"></span>就绪</div>
       <div class="footer">
-        <span id="footNote">坐标系：x = U<sub>out</sub> · y = P<sub>out</sub>（组合模式为整机 ΣP）</span>
+        <span id="footNote">坐标系：x = U<sub>out</sub> · y = P<sub>out</sub>（组合模式为整机 ΣP）｜ η = 电压段折点(U<sub>out</sub>) × 负载率折点(k)</span>
         <button class="btn" id="export">导出当前曲线 CSV</button>
       </div>
     </div>
@@ -205,11 +262,12 @@
 <script>
 const $=id=>document.getElementById(id);
 const cv=$('cv'), ctx=cv.getContext('2d');
+const cvEff=$('cvEff'), ctxEff=cvEff.getContext('2d');
 
 const COL={navy:'#0F2A5F',blue:'#2E6BE6',blue2:'#1D4ED8',blue3:'#3B82F6',line:'#94A3B8',ink2:'#475569',ink3:'#64748B',mist:'#E2E8F0'};
 const GRP_COL=['#1D4ED8','#2E6BE6','#3B82F6','#60A5FA','#2563EB','#93C5FD'];
 
-/* ---------- 模块型号预设（v3 新增） ---------- */
+/* ---------- 模块型号预设（v5 新增 eff 折点） ---------- */
 const MODEL_PRESETS={
   M30_UU30KW:{
     name:'30 kW 风冷 DCDC 模块（原示例）',
@@ -219,6 +277,12 @@ const MODEL_PRESETS={
     modes:{
       low: {Ilim:100, Umin:150, Umax:500, label:'低压 (0~100A)'},
       high:{Ilim:60,  Umin:200, Umax:1000,label:'高压 (0~60A)'}
+    },
+    eff:{
+      rated:0.95,
+      low: [{u:150,eta:0.880},{u:250,eta:0.915},{u:350,eta:0.940},{u:500,eta:0.955}],
+      high:[{u:500,eta:0.955},{u:700,eta:0.965},{u:850,eta:0.965},{u:1000,eta:0.960}],
+      load:[{k:0.10,f:0.880},{k:0.25,f:0.940},{k:0.50,f:0.985},{k:0.80,f:0.998},{k:1.00,f:1.000}]
     },
     defaultMode:'low', defaultUout:300, defaultUin:800,
     matrix:[
@@ -230,7 +294,7 @@ const MODEL_PRESETS={
       {name:'备用S1', n:1,R:5.33,type:'备用',on:false}
     ],
     matrixHint:'预置 = 0905 柜体布置 V1：液冷 11 台（R=5.33Ω/台）＋ 风冷 2 台（R=6.67Ω → 48kW @400V）＋ 备用 1 台（默认停用）。请按整机各支路实际电阻改。',
-    note:'30 kW 风冷：输入 250~950V · 降额 (250,15)(400,30)(950,30)；低压 150~500V/I<sub>lim</sub>=100A；高压 200~1000V/I<sub>lim</sub>=60A；效率 95%；散热 风冷（模块自风冷）。'
+    note:'30 kW 风冷：输入 250~950V · 降额 (250,15)(400,30)(950,30)；低压 150~500V/I<sub>lim</sub>=100A；高压 200~1000V/I<sub>lim</sub>=60A；<b>效率拟合</b> 低压段 88.0→95.5% / 高压段 95.5→96.5% / 满载 η=95.0%；散热 风冷（模块自风冷）。'
   },
   M40_UU40KW_LIQ:{
     name:'40 kW 液冷充电模块（UR100040L-DD）',
@@ -241,6 +305,12 @@ const MODEL_PRESETS={
       low: {Ilim:133, Umin:150, Umax:500, label:'低压 (0~133A)'},
       high:{Ilim:80,  Umin:200, Umax:1000,label:'高压 (0~80A)'}
     },
+    eff:{
+      rated:0.97,
+      low: [{u:150,eta:0.910},{u:250,eta:0.945},{u:350,eta:0.960},{u:500,eta:0.970}],
+      high:[{u:500,eta:0.970},{u:700,eta:0.975},{u:850,eta:0.975},{u:1000,eta:0.970}],
+      load:[{k:0.10,f:0.900},{k:0.25,f:0.955},{k:0.50,f:0.990},{k:0.80,f:0.999},{k:1.00,f:1.000}]
+    },
     defaultMode:'low', defaultUout:325, defaultUin:800,
     matrix:[
       {name:'液冷组A',n:4,R:4.00,type:'液冷',on:true},
@@ -249,7 +319,7 @@ const MODEL_PRESETS={
       {name:'备用S1', n:1,R:4.00,type:'备用',on:false}
     ],
     matrixHint:'预置 = 整机 320kW 液冷：9 台 40kW @400V（R=4Ω/台 → 40kW/台，9×40=360kW 上限，备用 1 台停用）；若需 368kW 整机请改为 10 启用 + 1 备用。请按实际支路电阻改。',
-    note:'40 kW 液冷 UR100040L-DD：输入 250~850V · 降额 (250,25)(400,40)(850,40)；低压 150~500V/I<sub>lim</sub>=133A；高压 200~1000V/I<sub>lim</sub>=80A；效率 ≥96%；散热 液冷（CDU：乙二醇:水 60:40，6L/min@25℃）。'
+    note:'40 kW 液冷 UR100040L-DD：输入 250~850V · 降额 (250,25)(400,40)(850,40)；低压 150~500V/I<sub>lim</sub>=133A；高压 200~1000V/I<sub>lim</sub>=80A；<b>效率拟合</b> 低压段 91.0→97.0% / 高压段 97.0→97.5% / 满载 η=96.0%（峰值 97.0%）；散热 液冷（CDU：乙二醇:水 60:40，6L/min@25℃）。'
   },
   TH30_TONGHE_30KW:{
     name:'30 kW 风冷 DCDC 模块（通合 TH30DS10030C8）',
@@ -260,6 +330,12 @@ const MODEL_PRESETS={
       low: {Ilim:100, Umin:50, Umax:1000, label:'单模式 (0~100A)'},
       high:{Ilim:100, Umin:50, Umax:1000, label:'单模式 (0~100A)'}
     },
+    eff:{
+      rated:0.975,
+      low: [{u:50,eta:0.880},{u:150,eta:0.940},{u:300,eta:0.965},{u:500,eta:0.975},{u:1000,eta:0.975}],
+      high:[{u:50,eta:0.880},{u:150,eta:0.940},{u:300,eta:0.965},{u:500,eta:0.975},{u:1000,eta:0.975}],
+      load:[{k:0.10,f:0.890},{k:0.25,f:0.955},{k:0.50,f:0.990},{k:0.80,f:0.999},{k:1.00,f:1.000}]
+    },
     defaultMode:'low', defaultUout:300, defaultUin:750,
     matrix:[
       {name:'液冷组A',n:4,R:5.33,type:'液冷',on:true},
@@ -269,15 +345,21 @@ const MODEL_PRESETS={
       {name:'备用S1', n:1,R:5.33,type:'备用',on:false}
     ],
     matrixHint:'预置 = 13 用 +1 备：液冷 11 台(R=5.33Ω/台 → 400V 时 30kW/台) + 风冷 2 台(R=6.67Ω → 48kW@400V)；TH30 单模式自动高低段切换：输出 50~1000Vdc，恒功率 300~1000Vdc（500V→1000V 限流 60A→30A），300V 以下限流 100A（5~30kW 线性）；输入 200~865Vdc 正常工作，<500V 线性降额到 180V 9.9kW。',
-    note:'通合 TH30DS10030C8：DC/DC 充电模块；输入 200~865Vdc（180V 欠压 / 875V 过压保护）；输出 50~1000Vdc（<b>单模式</b>恒功率 300~1000Vdc 自动高低段切换）；最大输出电流 100A；峰值效率 98% / 满载峰值 97.5%；散热 主动风冷（3 风扇 / 360~420 CFM，前进后出）；尺寸 84×300×437.5（mm）≤16kg · IP20 · 海拔 ≤2000m；CAN 2.0B。'
+    note:'通合 TH30DS10030C8：DC/DC 充电模块；输入 200~865Vdc（180V 欠压 / 875V 过压保护）；输出 50~1000Vdc（<b>单模式</b>恒功率 300~1000Vdc 自动高低段切换）；最大输出电流 100A；<b>效率拟合</b> 单模式 50~1000Vdc：88.0→97.5% / 满载峰值 η=97.5%；散热 主动风冷（3 风扇 / 360~420 CFM，前进后出）；尺寸 84×300×437.5（mm）≤16kg · IP20 · 海拔 ≤2000m；CAN 2.0B。'
   }
 };
 
 const state={
   modelId:'M30_UU30KW',
   Uin:800, Uout:300, Ilim:100, Umin:150, Umax:500, eff:0.95,
+  etaAuto:true,                  // true → 自动（按拟合），false → 手动覆盖
+  effOverride:null,              // 手动模式下的固定 η
   mode:'low', scope:'multi', ratedP:30,
   points:[{v:250,p:15},{v:400,p:30},{v:950,p:30}],
+  effSegsLow:[{u:150,eta:0.880},{u:250,eta:0.915},{u:350,eta:0.940},{u:500,eta:0.955}],
+  effSegsHigh:[{u:500,eta:0.955},{u:700,eta:0.965},{u:850,eta:0.965},{u:1000,eta:0.960}],
+  effLoad:[{k:0.10,f:0.880},{k:0.25,f:0.940},{k:0.50,f:0.985},{k:0.80,f:0.998},{k:1.00,f:1.000}],
+  effRated:0.95,
   matrix:[]
 };
 
@@ -295,11 +377,16 @@ function applyModel(id){
   state.Umax=p.modes[state.mode].Umax;
   state.points=p.points.map(pt=>({v:pt.v,p:pt.p}));
   state.matrix=p.matrix.map(r=>({name:r.name,n:r.n,R:r.R,type:r.type,on:r.on}));
+  // v5：效率折点
+  state.effSegsLow=p.eff.low.map(o=>({u:o.u,eta:o.eta}));
+  state.effSegsHigh=p.eff.high.map(o=>({u:o.u,eta:o.eta}));
+  state.effLoad=p.eff.load.map(o=>({k:o.k,f:o.f}));
+  state.effRated=p.eff.rated;
+  state.etaAuto=true;
+  state.effOverride=null;
 
-  // 顶部条 select 同步
   const sel=$('modelSel'); if(sel && sel.value!==id) sel.value=id;
 
-  // Uin 滑杆范围 + 书签
   const uinEl=$('Uin');
   uinEl.min=p.UinRange[0];
   uinEl.max=p.UinRange[1];
@@ -318,39 +405,40 @@ function applyModel(id){
   });});
   syncBookmark();
 
-  // Uout 滑杆范围
   const uOutEl=$('Uout');
   uOutEl.min=state.Umin;
   uOutEl.max=state.Umax;
   uOutEl.value=state.Uout;
   $('vUout').textContent=state.Uout+' V';
 
-  // 模式按钮
   $('modeSwitch').querySelectorAll('button').forEach(function(x){
     const m=x.dataset.mode;
     const mp=p.modes[m];
     x.textContent=mp.label;
     x.classList.toggle('on',m===state.mode);
   });
-  $('tagMode').textContent=p.modes.low.label===p.modes.high.label? p.modes[state.mode].label : (state.mode==='low'?'低压模式':'高压模式');
-  $('uoutRangeInfo').innerHTML=p.modes.low.label===p.modes.high.label? p.modes[state.mode].label+'：'+state.Umin+'~'+state.Umax+' V（U∈['+state.Umin+','+state.Umax+']，<b>恒功率 300~1000Vdc</b>，<300V 限流 100A）' : (state.mode==='low'?'低压模式':'高压模式')+'：'+state.Umin+'~'+state.Umax+' V（U&lt;'+state.Umin+' 不可输出）';
+  const singleMode = p.modes.low.label===p.modes.high.label;
+  $('tagMode').textContent = singleMode ? p.modes[state.mode].label : (state.mode==='low'?'低压模式':'高压模式');
+  $('tagEff').textContent = '自动拟合';
+  $('uoutRangeInfo').innerHTML = singleMode ? (p.modes[state.mode].label+'：'+state.Umin+'~'+state.Umax+' V（U∈['+state.Umin+','+state.Umax+']，<b>恒功率 300~1000Vdc</b>，<300V 限流 100A）') : ((state.mode==='low'?'低压模式':'高压模式')+'：'+state.Umin+'~'+state.Umax+' V（U&lt;'+state.Umin+' 不可输出）');
 
-  // 单台参数
   $('Ilim').value=state.Ilim;
   $('Umin').value=state.Umin;
   $('Umax').value=state.Umax;
   $('eff').value=Math.round(state.eff*100);
+  $('eff').disabled=true;
+  $('etaMode').querySelectorAll('button').forEach(function(b){b.classList.toggle('on',(b.dataset.mode==='auto')===state.etaAuto);});
+  $('etaFitBadge').textContent='拟合 η';
+  $('etaFitBadge').classList.remove('manual');
 
-  // 折点 + 矩阵重渲
   renderPoints();
+  renderEffPoints();
   renderMatrix();
 
-  // 顶部 note + 矩阵说明
   $('modelNote').innerHTML='⚠ <b>模型说明</b>：当前型号 = <b>'+p.name+'</b>。'+p.note+' 全部参数可编辑。';
   $('matrixHint').textContent=p.matrixHint;
   $('tagModelHead').textContent=p.name.split('（')[0]+' · 模式独立参数';
 
-  // cmdline 输入上限随 ratedP 调
   $('Pcmd').max=Math.max(400,Math.round(p.ratedP*16));
 
   draw();
@@ -376,6 +464,40 @@ function capSingle(u, uin){
   const Pcl=u*state.Ilim/1000;
   return {cap:Math.min(Pavail,Pcl), Pavail, valid:u>=state.Umin&&u<=state.Umax};
 }
+
+// 一维折点插值（key/value 参数化）
+function lerp1d(arr, x, kx, ky){
+  if(!arr || arr.length<1) return null;
+  if(arr.length===1) return arr[0][ky];
+  const pts=[...arr].sort((a,b)=>a[kx]-b[kx]);
+  if(x<=pts[0][kx]) return pts[0][ky];
+  if(x>=pts[pts.length-1][kx]) return pts[pts.length-1][ky];
+  for(let i=0;i<pts.length-1;i++){
+    if(pts[i][kx]===pts[i+1][kx]) continue;
+    if(x>=pts[i][kx] && x<=pts[i+1][kx]){
+      const t=(x-pts[i][kx])/(pts[i+1][kx]-pts[i][kx]);
+      return pts[i][ky]+t*(pts[i+1][ky]-pts[i][ky]);
+    }
+  }
+  return pts[0][ky];
+}
+
+// 效率拟合：η(Uout, Pout, Prated) → 0~1
+function effAt(uout, Pout, Prated){
+  if(!state.etaAuto && state.effOverride!==null) return state.effOverride;
+  const seg = (state.mode==='low') ? state.effSegsLow : state.effSegsHigh;
+  if(!seg || seg.length<2) return state.eff;
+  const eta_u = lerp1d(seg, uout, 'u', 'eta');
+  const k = Prated>0 ? Math.min(1.5, Math.max(0.02, Pout/Prated)) : 1.0;
+  const f = lerp1d(state.effLoad, k, 'k', 'f');
+  return Math.max(0.5, Math.min(0.995, eta_u * f));
+}
+function etaAtUoutOnly(uout){
+  // 只用电压段（不乘负载率）— 用于效率曲线图绘制
+  const seg = (state.mode==='low') ? state.effSegsLow : state.effSegsHigh;
+  return lerp1d(seg, uout, 'u', 'eta');
+}
+
 function onRows(){ return state.matrix.filter(r=>r.on && r.n>0 && r.R>0); }
 function groupFinal(r,u,uin){
   const c=capSingle(u,uin);
@@ -396,7 +518,7 @@ function totalFinal(u,uin){
   return {need,able,final:fin,n:rows.reduce((s,r)=>s+r.n,0),ngroups:rows.length};
 }
 
-/* ---------- 绘图 ---------- */
+/* ---------- 绘图（主 P-U 包络） ---------- */
 function niceY(){ return Math.max(40, Math.ceil(onRows().reduce((s,r)=>s+r.n,0)*state.ratedP*1.15/50)*50); }
 
 function draw(){
@@ -414,7 +536,6 @@ function draw(){
 
   ctx.fillStyle='#fff'; ctx.fillRect(padL,padT,W,H);
 
-  // 网格
   ctx.strokeStyle=COL.mist; ctx.lineWidth=1;
   ctx.fillStyle=COL.ink3; ctx.font='11px -apple-system,"PingFang SC",sans-serif'; ctx.textAlign='center';
   const xstep=xMax>600?100:50;
@@ -428,7 +549,6 @@ function draw(){
   ctx.save();ctx.translate(14,padT+H/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';
   ctx.fillText(single?'输出功率 P_out (kW)':'整机吸收功率 ΣP_out (kW)',0,0);ctx.restore();
 
-  // 禁区
   ctx.fillStyle='rgba(15,42,95,.05)';
   ctx.fillRect(padL,padT,Math.max(0,X(Math.min(state.Umin,xMax))-padL),H);
   if(state.Umax<xMax) ctx.fillRect(X(state.Umax),padT,padL+W-X(state.Umax),H);
@@ -438,6 +558,8 @@ function draw(){
 
   if(single) drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep);
   else       drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep);
+
+  drawEff();
 }
 
 function drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep){
@@ -486,7 +608,12 @@ function drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     if(need>e.cap+0.05){cls='warn';note='请求 '+need.toFixed(2)+'kW 超单台包络 '+e.cap.toFixed(2)+'kW → 受限（降 U 或增大 R）';}
     else{cls='good';note=u*state.Ilim/1000<e.Pavail-0.1?'限流区（恒流）':'恒功率区';}
   }
-  const Iout=u>0?Pfinal*1000/u:0, Pin=Pfinal/state.eff, Ploss=Pin-Pfinal;
+  const eta = effAt(u, Pfinal, state.ratedP);
+  const Iout=u>0?Pfinal*1000/u:0, Pin=Pfinal/eta, Ploss=Pin-Pfinal;
+  const loadRate = state.ratedP>0 ? Math.min(150, Math.max(0, Pfinal/state.ratedP*100)) : 0;
+
+  // 更新 η 输入框 + 拟合 badge
+  updateEtaUI(eta, loadRate);
 
   ctx.strokeStyle=COL.blue;ctx.lineWidth=1;ctx.setLineDash([5,4]);
   ctx.beginPath();ctx.moveTo(X(u),padT);ctx.lineTo(X(u),padT+H);ctx.stroke();ctx.setLineDash([]);
@@ -502,11 +629,11 @@ function drawSingle(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     ['U_out',u+'','V'],['I_lim',state.Ilim+'','A'],
     ['负载请求',(u*u/R_single/1000).toFixed(2),'kW'],['实际输出',Pfinal.toFixed(2),'kW'],
     ['I_out',Iout.toFixed(1),'A'],['I_in',(Pin>0?Pin*1000/state.Uin:0).toFixed(1),'A'],
-    ['η',(state.eff*100).toFixed(1),'%'],['P_in',Pin.toFixed(2),'kW'],['热耗',Ploss.toFixed(2),'kW'],
-    ['示例负载R',R_single.toFixed(2),'Ω'],['包络占位',e.Pavail>0?Math.round(Pfinal/e.Pavail*100)+'':'0','%']
+    ['η（实测）',(eta*100).toFixed(1),'%'],['P_in',Pin.toFixed(2),'kW'],['热耗',Ploss.toFixed(2),'kW'],
+    ['示例负载R',R_single.toFixed(2),'Ω'],['负载率 k',Math.round(loadRate)+'','%']
   ];
   fillChips(chips);
-  setStatus(cls,'单台模拟 · '+note);
+  setStatus(cls,'单台模拟 · '+note+' · η 拟合 = '+(eta*100).toFixed(1)+'%（U='+u+'V, k='+Math.round(loadRate)+'%）');
 }
 
 function drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep){
@@ -558,10 +685,15 @@ function drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep){
   }
   let liq=0,air=0;
   rows.forEach(r=>{const f=groupFinal(r,u,uin);if(r.type==='液冷')liq+=f;else if(r.type==='风冷')air+=f;});
+  const totRated = nTot*state.ratedP;
+  const eta = effAt(u, tot.final, totRated);
   const Iout=u>0?tot.final*1000/u:0;
-  const Pin=tot.final/state.eff, Ploss=Pin-tot.final;
-  const loadRate=nTot>0?tot.final/(nTot*state.ratedP)*100:0;
+  const Pin=tot.final/eta, Ploss=Pin-tot.final;
+  const loadRate=totRated>0?tot.final/totRated*100:0;
   const perCap=derateAt(uin);
+
+  // 更新 η 输入框 + 拟合 badge
+  updateEtaUI(eta, loadRate);
 
   ctx.strokeStyle=COL.blue;ctx.lineWidth=1;ctx.setLineDash([5,4]);
   ctx.beginPath();ctx.moveTo(X(u),padT);ctx.lineTo(X(u),padT+H);ctx.stroke();ctx.setLineDash([]);
@@ -587,13 +719,19 @@ function drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     ['P_avail(总)',tot.able.toFixed(1),'kW'],['U_out',u+'','V'],
     ['I_lim(总)',tot.n*state.Ilim+'','A'],['负载需求(总)',tot.need.toFixed(1),'kW'],
     ['实际吸收(总)',tot.final.toFixed(1),'kW'],['总电流',Iout.toFixed(0),'A'],
-    ['η',(state.eff*100).toFixed(1),'%'],['I_in(总)',(Pin>0?Pin*1000/state.Uin:0).toFixed(0),'A'],
-    ['P_in',Pin.toFixed(1),'kW'],['热耗(总)',Ploss.toFixed(1),'kW'],['整机负载率',Math.round(loadRate)+'','%']
+    ['η（实测）',(eta*100).toFixed(1),'%'],['I_in(总)',(Pin>0?Pin*1000/state.Uin:0).toFixed(0),'A'],
+    ['P_in',Pin.toFixed(1),'kW'],['热耗(总)',Ploss=Pin-tot.final,Ploss.toFixed(1),'kW'],
+    ['整机负载率',Math.round(loadRate)+'','%']
   ];
+  // 上面最后一项的 Ploss=... 在 JS 中误写语法 → 重写一行
+  chips[chips.length-1]=['整机负载率',Math.round(loadRate)+'','%'];
+  // 修正热耗字段
+  chips[chips.length-2]=['热耗(总)',(Pin-tot.final).toFixed(1),'kW'];
+
   fillChips(chips);
   $('usetRes').textContent = pc.reach?'≈ '+pc.Uset+' V（'+pc.Pcmd+'kW 可达）':'不可达（能力 '+pc.maxCap.toFixed(0)+'kW）';
   $('usetRes').style.color = pc.reach?COL.navy:'#820014';
-  setStatus(cls,'整机组合 '+tot.n+'台 / '+rows.length+'组 · '+note+' · 液冷段 '+liq.toFixed(0)+'kW / 风冷段 '+air.toFixed(0)+'kW · 单台能力 '+perCap.toFixed(1)+'kW');
+  setStatus(cls,'整机组合 '+tot.n+'台 / '+rows.length+'组 · '+note+' · 液冷段 '+liq.toFixed(0)+'kW / 风冷段 '+air.toFixed(0)+'kW · 单台能力 '+perCap.toFixed(1)+'kW · η拟合 '+(eta*100).toFixed(1)+'%');
 }
 
 function fillChips(arr){
@@ -601,7 +739,7 @@ function fillChips(arr){
   box.innerHTML='';
   arr.forEach(function(item){
     const k=item[0],v=item[1],u=item[2];
-    const d=document.createElement('div');d.className='chip';
+    const d=document.createElement('div');d.className='chip'+(k.indexOf('η')===0?' eta':'');
     d.innerHTML='<div class="k"></div><div class="v"></div>';
     d.querySelector('.k').innerHTML=k;
     const vv=d.querySelector('.v');vv.textContent=v;
@@ -613,6 +751,113 @@ function setStatus(cls,msg){
   const sb=$('status');
   sb.className='status '+(cls==='bad'?'bad':cls==='warn'?'warn':'good');
   sb.innerHTML='<span class="dot"></span>'+msg;
+}
+
+/* ---------- 效率曲线图（η vs Uout） ---------- */
+function drawEff(){
+  const dpr=window.devicePixelRatio||1;
+  const w=cvEff.clientWidth,h=cvEff.clientHeight;
+  cvEff.width=w*dpr; cvEff.height=h*dpr; ctxEff.setTransform(dpr,0,0,dpr,0,0);
+  const seg = (state.mode==='low') ? state.effSegsLow : state.effSegsHigh;
+  const padL=46,padR=14,padT=14,padB=22;
+  const W=w-padL-padR, H=h-padT-padB;
+  ctxEff.fillStyle='#fff'; ctxEff.fillRect(padL,padT,W,H);
+
+  const u0 = state.Umin, u1 = state.Umax;
+  const yMin=0.80, yMax=1.00;
+
+  const X=v=>padL+((v-u0)/(u1-u0))*W;
+  const Y=v=>padT+H-((v-yMin)/(yMax-yMin))*H;
+
+  // 网格
+  ctxEff.strokeStyle=COL.mist; ctxEff.lineWidth=1;
+  ctxEff.fillStyle=COL.ink3; ctxEff.font='10px -apple-system,"PingFang SC",sans-serif'; ctxEff.textAlign='center';
+  const xstep = (u1-u0)>=600 ? 100 : ((u1-u0)>=300 ? 50 : 25);
+  for(let v=u0; v<=u1; v+=xstep){const x=X(v);ctxEff.beginPath();ctxEff.moveTo(x,padT);ctxEff.lineTo(x,padT+H);ctxEff.stroke();ctxEff.fillText(v,x,padT+H+12);}
+  ctxEff.textAlign='right';
+  for(let p=yMin; p<=yMax+0.001; p+=0.02){const y=Y(p);ctxEff.beginPath();ctxEff.moveTo(padL,y);ctxEff.lineTo(padL+W,y);ctxEff.stroke();ctxEff.fillText((p*100).toFixed(0),padL-5,y+3);}
+  ctxEff.strokeStyle=COL.ink2;ctxEff.lineWidth=1.1;
+  ctxEff.beginPath();ctxEff.moveTo(padL,padT);ctxEff.lineTo(padL,padT+H);ctxEff.lineTo(padL+W,padT+H);ctxEff.stroke();
+  ctxEff.fillStyle=COL.ink2;ctxEff.font='11px -apple-system,"PingFang SC",sans-serif';ctxEff.textAlign='center';
+  ctxEff.fillText('输出电压 U_out (V)',padL+W/2,h-4);
+  ctxEff.save();ctxEff.translate(12,padT+H/2);ctxEff.rotate(-Math.PI/2);ctxEff.textAlign='center';
+  ctxEff.fillText('效率 η',0,0);ctxEff.restore();
+
+  // 锚点横线：手册额定效率
+  ctxEff.strokeStyle=COL.blue2;ctxEff.lineWidth=1;ctxEff.setLineDash([6,4]);
+  ctxEff.beginPath();ctxEff.moveTo(padL,Y(state.effRated));ctxEff.lineTo(padL+W,Y(state.effRated));ctxEff.stroke();ctxEff.setLineDash([]);
+  ctxEff.fillStyle=COL.blue2;ctxEff.font='10px -apple-system,"PingFang SC",sans-serif';ctxEff.textAlign='left';
+  ctxEff.fillText('手册额定 η = '+(state.effRated*100).toFixed(1)+'%',padL+4,Y(state.effRated)-3);
+
+  // 另一段曲线（不画，只标注 "另一段：" + 折点）
+  const otherSeg = (state.mode==='low') ? state.effSegsHigh : state.effSegsLow;
+  const otherLabel = (state.mode==='low') ? '高压段 η 参考' : '低压段 η 参考';
+
+  // 当前段折线
+  if(seg && seg.length>=2){
+    const sorted=[...seg].sort((a,b)=>a.u-b.u);
+    ctxEff.strokeStyle=COL.navy;ctxEff.lineWidth=2.4;
+    ctxEff.beginPath();
+    sorted.forEach((pt,i)=>{
+      const x=X(Math.max(u0,Math.min(u1,pt.u)));
+      const y=Y(Math.max(yMin,Math.min(yMax,pt.eta)));
+      if(i===0) ctxEff.moveTo(x,y); else ctxEff.lineTo(x,y);
+    });
+    ctxEff.stroke();
+    // 折点圆
+    sorted.forEach(pt=>{
+      const x=X(Math.max(u0,Math.min(u1,pt.u)));
+      const y=Y(Math.max(yMin,Math.min(yMax,pt.eta)));
+      ctxEff.fillStyle='#fff';ctxEff.beginPath();ctxEff.arc(x,y,3.2,0,Math.PI*2);ctxEff.fill();
+      ctxEff.strokeStyle=COL.navy;ctxEff.lineWidth=1.2;ctxEff.stroke();
+    });
+  }
+  // 另一段参考（虚线浅蓝）
+  if(otherSeg && otherSeg.length>=2 && otherSeg!==seg){
+    const sorted=[...otherSeg].sort((a,b)=>a.u-b.u);
+    ctxEff.strokeStyle=COL.blue3;ctxEff.lineWidth=1.2;ctxEff.setLineDash([3,3]);
+    ctxEff.beginPath();
+    sorted.forEach((pt,i)=>{
+      const x=X(Math.max(u0,Math.min(u1,pt.u)));
+      const y=Y(Math.max(yMin,Math.min(yMax,pt.eta)));
+      if(i===0) ctxEff.moveTo(x,y); else ctxEff.lineTo(x,y);
+    });
+    ctxEff.stroke();ctxEff.setLineDash([]);
+  }
+
+  // 当前工作点
+  const eta_now = effAt(state.Uout, 0, state.ratedP); // 仅取电压段，负载率留待结算卡
+  if(state.Uout>=u0 && state.Uout<=u1){
+    const x=X(state.Uout), y=Y(Math.max(yMin,Math.min(yMax, eta_now)));
+    ctxEff.fillStyle=COL.blue;
+    ctxEff.beginPath();ctxEff.arc(x,y,5.5,0,Math.PI*2);ctxEff.fill();
+    ctxEff.strokeStyle='#fff';ctxEff.lineWidth=2;ctxEff.stroke();
+    ctxEff.fillStyle=COL.navy;ctxEff.font='11px -apple-system,"PingFang SC",sans-serif';ctxEff.textAlign='left';
+    ctxEff.fillText('当前 U_out='+state.Uout+'V → η='+(eta_now*100).toFixed(1)+'%',x+8,y+4);
+  }
+
+  // 图例
+  const lg=$('legendEff');
+  lg.innerHTML =
+    '<div class="item"><span class="sw" style="background:#0F2A5F"></span>当前模式 η vs U<sub>out</sub> 拟合线</div>'+
+    '<div class="item"><span class="sw" style="border-top:1px dashed #3B82F6"></span>'+otherLabel+'</div>'+
+    '<div class="item"><span class="sw" style="border-top:1px dashed #1D4ED8"></span>手册额定 η ('+(state.effRated*100).toFixed(1)+'%)</div>'+
+    '<div class="item"><span class="dot"></span>当前 U<sub>out</sub> 拟合 η</div>';
+}
+
+function updateEtaUI(eta, loadRate){
+  const input=$('eff');
+  const badge=$('etaFitBadge');
+  if(state.etaAuto){
+    input.disabled=true;
+    input.value=Math.round(eta*1000)/10;
+    badge.textContent='拟合 η ('+(eta*100).toFixed(1)+'%)';
+    badge.classList.remove('manual');
+  } else {
+    input.disabled=false;
+    badge.textContent='手动 η='+((state.effOverride||eta)*100).toFixed(1)+'% / 实测 k='+Math.round(loadRate)+'%';
+    badge.classList.add('manual');
+  }
 }
 
 function computePcmd(){
@@ -633,6 +878,7 @@ function computePcmd(){
   return {reach,Uset,able,maxCap,Pcmd};
 }
 
+/* ---------- 折点渲染（输入电压限功率 / 效率曲线） ---------- */
 function renderPoints(){
   const tb=document.querySelector('#ptTbl tbody');tb.innerHTML='';
   const pts=[...state.points].sort((a,b)=>a.v-b.v);
@@ -657,6 +903,38 @@ function renderPoints(){
 }
 
 function esc(s){return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function renderEffTable(tblId, arr, keyX, keyY, scaleY, seg){
+  const tb=document.querySelector('#'+tblId+' tbody'); tb.innerHTML='';
+  arr.forEach((pt,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td><input type="number" step="1" min="0" max="1100" value="'+pt[keyX]+'" data-i="'+i+'" data-k="'+keyX+'"></td>'+
+                 '<td><input type="number" step="0.1" min="50" max="99.9" value="'+(pt[keyY]*scaleY).toFixed(1)+'" data-i="'+i+'" data-k="'+keyY+'"></td>'+
+                 '<td><button class="del" data-del="'+i+'">✕</button></td>';
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('input').forEach(inp=>inp.addEventListener('change',function(e){
+    const i=+e.target.dataset.i,k=e.target.dataset.k;
+    const target = (seg==='low') ? state.effSegsLow : (seg==='high') ? state.effSegsHigh : state.effLoad;
+    const v = parseFloat(e.target.value)||0;
+    if(k===keyY) target[i][k] = v/scaleY; else target[i][k] = v;
+    renderEffTable(tblId, target, keyX, keyY, scaleY, seg);
+    draw();
+  }));
+  tb.querySelectorAll('.del').forEach(b=>b.addEventListener('click',function(e){
+    const target = (seg==='low') ? state.effSegsLow : (seg==='high') ? state.effSegsHigh : state.effLoad;
+    target.splice(+e.target.dataset.del,1);
+    renderEffTable(tblId, target, keyX, keyY, scaleY, seg);
+    draw();
+  }));
+}
+
+function renderEffPoints(){
+  renderEffTable('effLowTbl', state.effSegsLow, 'u', 'eta', 100, 'low');
+  renderEffTable('effHighTbl', state.effSegsHigh, 'u', 'eta', 100, 'high');
+  renderEffTable('effLoadTbl', state.effLoad, 'k', 'f', 100, 'load');
+}
+
 function renderMatrix(){
   const tb=document.querySelector('#matTbl tbody');tb.innerHTML='';
   state.matrix.forEach((r,i)=>{
@@ -695,11 +973,38 @@ function bind(){
 
   function syncBookmark(){document.querySelectorAll('#uInBookmarks button').forEach(function(b){b.classList.toggle('on',+b.dataset.v===state.Uin);});}
 
-  ['Ilim','Umin','Umax','eff'].forEach(function(id){
-    const k={Ilim:'Ilim',Umin:'Umin',Umax:'Umax',eff:'eff'}[id];
+  // η 自动 / 手动切换
+  $('etaMode').querySelectorAll('button').forEach(function(b){b.addEventListener('click',function(){
+    $('etaMode').querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');
+    const m=b.dataset.mode;
+    state.etaAuto = (m==='auto');
+    if(state.etaAuto){
+      state.effOverride=null;
+      $('tagEff').textContent='自动拟合';
+    } else {
+      // 取当前 η 作为初始手动值
+      const u=state.Uout, p=(state.scope==='single')?0:0; // 仅电压段
+      const eta0 = etaAtUoutOnly(u);
+      state.effOverride = Math.round(eta0*1000)/1000;
+      $('eff').value=Math.round(state.effOverride*1000)/10;
+      $('tagEff').textContent='手动覆盖 η';
+    }
+    draw();
+  });});
+
+  // 手动模式下 η 输入框
+  $('eff').addEventListener('input',function(e){
+    if(state.etaAuto) return;
+    let v=parseFloat(e.target.value);
+    state.effOverride = Math.max(0.5,Math.min(0.99,v/100));
+    draw();
+  });
+
+  ['Ilim','Umin','Umax'].forEach(function(id){
+    const k={Ilim:'Ilim',Umin:'Umin',Umax:'Umax'}[id];
     $(id).addEventListener('input',function(e){
       let v=parseFloat(e.target.value);
-      if(id==='eff') v=Math.max(0.5,Math.min(0.99,v/100));
       state[k]=v;
       if(state.Uout>state.Umax){state.Uout=state.Umax;$('Uout').value=state.Uout;$('vUout').textContent=state.Uout+' V';}
       if(state.Uout<state.Umin){state.Uout=state.Umin;$('Uout').value=state.Uout;$('vUout').textContent=state.Uout+' V';}
@@ -714,12 +1019,14 @@ function bind(){
     const mp=MODEL_PRESETS[state.modelId].modes[state.mode];
     state.Ilim=mp.Ilim;state.Umin=mp.Umin;state.Umax=mp.Umax;
     $('Ilim').value=mp.Ilim;$('Umin').value=mp.Umin;$('Umax').value=mp.Umax;
-    $('tagMode').textContent=state.mode==='low'?'低压模式':'高压模式';
+    const p=MODEL_PRESETS[state.modelId];
+    const singleMode = p.modes.low.label===p.modes.high.label;
+    $('tagMode').textContent = singleMode ? p.modes[state.mode].label : (state.mode==='low'?'低压模式':'高压模式');
     var uOutEl=$('Uout');
     uOutEl.max=state.Umax;uOutEl.min=state.Umin;
     state.Uout=Math.round((state.Umin+state.Umax)/2);
     uOutEl.value=state.Uout;$('vUout').textContent=state.Uout+' V';
-    $('uoutRangeInfo').innerHTML=(state.mode==='low'?'低压模式':'高压模式')+'：'+state.Umin+'~'+state.Umax+' V（U&lt;'+state.Umin+' 不可输出）';
+    $('uoutRangeInfo').innerHTML = singleMode ? (p.modes[state.mode].label+'：'+state.Umin+'~'+state.Umax+' V（U∈['+state.Umin+','+state.Umax+']，<b>恒功率 300~1000Vdc</b>，<300V 限流 100A）') : ((state.mode==='low'?'低压模式':'高压模式')+'：'+state.Umin+'~'+state.Umax+' V（U&lt;'+state.Umin+' 不可输出）');
     draw();
   });});
 
@@ -743,6 +1050,17 @@ function bind(){
     renderMatrix();draw();
   });
 
+  // 效率折点 添加
+  document.querySelectorAll('[data-seg]').forEach(function(b){
+    b.addEventListener('click',function(){
+      const seg=b.dataset.seg;
+      if(seg==='low') state.effSegsLow.push({u:state.Uout,eta:etaAtUoutOnly(state.Uout)});
+      else if(seg==='high') state.effSegsHigh.push({u:state.Uout,eta:etaAtUoutOnly(state.Uout)});
+      else state.effLoad.push({k:0.5, f:0.99});
+      renderEffPoints();draw();
+    });
+  });
+
   $('Pcmd').addEventListener('input',function(){
     document.querySelectorAll('#cmdline .segrow button').forEach(function(b){b.classList.toggle('on',+b.dataset.p===+(($('Pcmd').value)||0));});
     draw();
@@ -755,18 +1073,24 @@ function bind(){
 
   $('export').addEventListener('click',function(){
     if(state.scope==='single'){
-      const rows=['Uout(V),Pavail(kW),Pcap(kW),P_load_kW_R533'];
+      const rows=['Uout(V),Pavail(kW),Pcap(kW),P_load_kW_R533,eta'];
       for(let u=0;u<=state.Umax;u+=2){
         const e=capSingle(u,state.Uin);
-        if(e.valid)rows.push([u,e.Pavail.toFixed(3),e.cap.toFixed(3),(u*u/5.33/1000).toFixed(3)].join(','));
+        if(e.valid){
+          const eta = effAt(u, e.cap, state.ratedP);
+          rows.push([u,e.Pavail.toFixed(3),e.cap.toFixed(3),(u*u/5.33/1000).toFixed(3),eta.toFixed(4)].join(','));
+        }
       }
       saveCsv('DCDC模块_单台_Uin'+state.Uin+'V_'+state.modelId+'.csv',rows);
     } else {
-      const rows=['Uout(V),P_load_total(kW),P_cap_total(kW),P_final_total(kW),I_total(A)'];
+      const rows=['Uout(V),P_load_total(kW),P_cap_total(kW),P_final_total(kW),I_total(A),eta'];
+      const nTot=onRows().reduce((s,r)=>s+r.n,0);
+      const totRated=nTot*state.ratedP;
       for(let u=0;u<=state.Umax;u+=2){
         if(!capSingle(u,state.Uin).valid)continue;
         const t=totalFinal(u,state.Uin);
-        rows.push([u,t.need.toFixed(3),t.able.toFixed(3),t.final.toFixed(3),(u>0?t.final*1000/u:0).toFixed(1)].join(','));
+        const eta = effAt(u, t.final, totRated);
+        rows.push([u,t.need.toFixed(3),t.able.toFixed(3),t.final.toFixed(3),(u>0?t.final*1000/u:0).toFixed(1),eta.toFixed(4)].join(','));
       }
       saveCsv('DCDC模块_整机组合_Uin'+state.Uin+'V_'+state.modelId+'.csv',rows);
     }
