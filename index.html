@@ -720,13 +720,9 @@ function drawMulti(padL,padT,W,H,X,Y,xMax,yMax,yStep){
     ['I_lim(总)',tot.n*state.Ilim+'','A'],['负载需求(总)',tot.need.toFixed(1),'kW'],
     ['实际吸收(总)',tot.final.toFixed(1),'kW'],['总电流',Iout.toFixed(0),'A'],
     ['η（实测）',(eta*100).toFixed(1),'%'],['I_in(总)',(Pin>0?Pin*1000/state.Uin:0).toFixed(0),'A'],
-    ['P_in',Pin.toFixed(1),'kW'],['热耗(总)',Ploss=Pin-tot.final,Ploss.toFixed(1),'kW'],
+    ['P_in',Pin.toFixed(1),'kW'],['热耗(总)',(Pin-tot.final).toFixed(1),'kW'],
     ['整机负载率',Math.round(loadRate)+'','%']
   ];
-  // 上面最后一项的 Ploss=... 在 JS 中误写语法 → 重写一行
-  chips[chips.length-1]=['整机负载率',Math.round(loadRate)+'','%'];
-  // 修正热耗字段
-  chips[chips.length-2]=['热耗(总)',(Pin-tot.final).toFixed(1),'kW'];
 
   fillChips(chips);
   $('usetRes').textContent = pc.reach?'≈ '+pc.Uset+' V（'+pc.Pcmd+'kW 可达）':'不可达（能力 '+pc.maxCap.toFixed(0)+'kW）';
