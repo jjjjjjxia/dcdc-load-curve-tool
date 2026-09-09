@@ -91,6 +91,7 @@
     <select id="modelSel">
       <option value="M30_UU30KW">30 kW 风冷 DCDC 模块（原示例）</option>
       <option value="M40_UU40KW_LIQ">40 kW 液冷充电模块（UR100040L-DD）</option>
+      <option value="TH30_TONGHE_30KW">30 kW 风冷 DCDC 模块（通合 TH30DS10030C8）</option>
     </select>
   </div>
 </div>
@@ -249,6 +250,26 @@ const MODEL_PRESETS={
     ],
     matrixHint:'预置 = 整机 320kW 液冷：9 台 40kW @400V（R=4Ω/台 → 40kW/台，9×40=360kW 上限，备用 1 台停用）；若需 368kW 整机请改为 10 启用 + 1 备用。请按实际支路电阻改。',
     note:'40 kW 液冷 UR100040L-DD：输入 250~850V · 降额 (250,25)(400,40)(850,40)；低压 150~500V/I<sub>lim</sub>=133A；高压 200~1000V/I<sub>lim</sub>=80A；效率 ≥96%；散热 液冷（CDU：乙二醇:水 60:40，6L/min@25℃）。'
+  },
+  TH30_TONGHE_30KW:{
+    name:'30 kW 风冷 DCDC 模块（通合 TH30DS10030C8）',
+    ratedP:30, eff:0.975,
+    UinRange:[180,875], UinBookmarks:[200,300,500,750,865],
+    points:[{v:180,p:0},{v:180,p:9.9},{v:500,p:30},{v:865,p:30},{v:865,p:0}],
+    modes:{
+      low: {Ilim:100, Umin:50, Umax:1000, label:'单模式 (0~100A)'},
+      high:{Ilim:100, Umin:50, Umax:1000, label:'单模式 (0~100A)'}
+    },
+    defaultMode:'low', defaultUout:300, defaultUin:750,
+    matrix:[
+      {name:'液冷组A',n:4,R:5.33,type:'液冷',on:true},
+      {name:'液冷组B',n:4,R:5.33,type:'液冷',on:true},
+      {name:'液冷组C',n:3,R:5.33,type:'液冷',on:true},
+      {name:'风冷组G',n:2,R:6.67,type:'风冷',on:true},
+      {name:'备用S1', n:1,R:5.33,type:'备用',on:false}
+    ],
+    matrixHint:'预置 = 13 用 +1 备：液冷 11 台(R=5.33Ω/台 → 400V 时 30kW/台) + 风冷 2 台(R=6.67Ω → 48kW@400V)；TH30 单模式自动高低段切换：输出 50~1000Vdc，恒功率 300~1000Vdc（500V→1000V 限流 60A→30A），300V 以下限流 100A（5~30kW 线性）；输入 200~865Vdc 正常工作，<500V 线性降额到 180V 9.9kW。',
+    note:'通合 TH30DS10030C8：DC/DC 充电模块；输入 200~865Vdc（180V 欠压 / 875V 过压保护）；输出 50~1000Vdc（<b>单模式</b>恒功率 300~1000Vdc 自动高低段切换）；最大输出电流 100A；峰值效率 98% / 满载峰值 97.5%；散热 主动风冷（3 风扇 / 360~420 CFM，前进后出）；尺寸 84×300×437.5（mm）≤16kg · IP20 · 海拔 ≤2000m；CAN 2.0B。'
   }
 };
 
@@ -311,8 +332,8 @@ function applyModel(id){
     x.textContent=mp.label;
     x.classList.toggle('on',m===state.mode);
   });
-  $('tagMode').textContent=state.mode==='low'?'低压模式':'高压模式';
-  $('uoutRangeInfo').innerHTML=(state.mode==='low'?'低压模式':'高压模式')+'：'+state.Umin+'~'+state.Umax+' V（U&lt;'+state.Umin+' 不可输出）';
+  $('tagMode').textContent=p.modes.low.label===p.modes.high.label? p.modes[state.mode].label : (state.mode==='low'?'低压模式':'高压模式');
+  $('uoutRangeInfo').innerHTML=p.modes.low.label===p.modes.high.label? p.modes[state.mode].label+'：'+state.Umin+'~'+state.Umax+' V（U∈['+state.Umin+','+state.Umax+']，<b>恒功率 300~1000Vdc</b>，<300V 限流 100A）' : (state.mode==='low'?'低压模式':'高压模式')+'：'+state.Umin+'~'+state.Umax+' V（U&lt;'+state.Umin+' 不可输出）';
 
   // 单台参数
   $('Ilim').value=state.Ilim;
@@ -342,6 +363,7 @@ function derateAt(uin){
   if(uin<pts[0].v) return 0;
   if(uin>=pts[pts.length-1].v) return pts[pts.length-1].p;
   for(let i=0;i<pts.length-1;i++){
+    if(pts[i].v === pts[i+1].v) continue;
     if(uin>=pts[i].v && uin<=pts[i+1].v){
       const t=(uin-pts[i].v)/(pts[i+1].v-pts[i].v);
       return pts[i].p + t*(pts[i+1].p-pts[i].p);
